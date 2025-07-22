@@ -1,0 +1,22 @@
+/* styles/base/_typography.scss */
+
+body {
+  font-family: $font-family;
+  font-size: 16px;
+  color: $text-color;
+  background-color: $background-color;
+}
+
+h1 {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+h2 {
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+}
+
+p {
+  line-height: 1.6;
+}

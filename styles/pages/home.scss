@@ -1,0 +1,43 @@
+.home-screen {
+  text-align: center;
+  padding-top: 10vh;
+
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+  }
+
+  p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+  }
+
+  .home-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.3s ease;
+
+      &.primary {
+        background-color: #27ae60;
+        color: white;
+      }
+
+      &.secondary {
+        background-color: #2980b9;
+        color: white;
+      }
+
+      &:hover {
+        opacity: 0.8;
+      }
+    }
+  }
+}

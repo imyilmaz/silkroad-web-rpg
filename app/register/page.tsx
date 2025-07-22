@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import '../../styles/pages/register.scss';
 
 export default function RegisterPage() {
   return (
