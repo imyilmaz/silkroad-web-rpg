@@ -1,0 +1,38 @@
+.admin-login {
+  max-width: 400px;
+  margin: 40px auto;
+  background: #fff8f0;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+
+  h2 {
+    text-align: center;
+    margin-bottom: 16px;
+    color: #333333;
+  }
+
+  input {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+
+  button {
+    padding: 10px;
+    margin-top: 12px;
+    background-color: #553c9a;
+    color: white;
+    border: none;
+    width: 100%;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  p {
+    margin-top: 10px;
+    text-align: center;
+  }
+}
