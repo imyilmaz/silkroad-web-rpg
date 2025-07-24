@@ -14,15 +14,39 @@ datasource db {
 }
 
 model User {
-  id               Int       @id @default(autoincrement())
-  username         String    @unique
-  email            String    @unique
+  id               Int         @id @default(autoincrement())
+  username         String      @unique
+  email            String      @unique
   password         String
   securityQuestion String
   securityAnswer   String
-  createdAt        DateTime  @default(now())
-  isAdmin          Boolean   @default(false)
+  createdAt        DateTime    @default(now())
+  isAdmin          Boolean     @default(false)
   adminCode        String? // tek kullanımlık kod
   adminCodeExpiry  DateTime? // süresi dolacak
-  isBlocked        Boolean   @default(false)
+  isBlocked        Boolean     @default(false)
+  characters       Character[]
+  sessions         Session[]
+}
+
+model Character {
+  id     Int    @id @default(autoincrement())
+  name   String @unique
+  race   String // örnek: "Asia", "Europe", "Arab"
+  userId Int
+  user   User   @relation(fields: [userId], references: [id])
+
+  level Int @default(1)
+  exp   Int @default(0)
+
+  createdAt DateTime  @default(now())
+  sessions  Session[]
+}
+
+model Session {
+  id          Int        @id @default(autoincrement())
+  userId      Int        @unique
+  characterId Int?
+  user        User       @relation(fields: [userId], references: [id])
+  character   Character? @relation(fields: [characterId], references: [id])
 }

@@ -1,0 +1,75 @@
+.character-page {
+  background-color: #0f0f0f;
+  color: #fff;
+  min-height: 100vh;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  h2 {
+    font-size: 32px;
+    margin-bottom: 30px;
+  }
+
+  .active-character {
+    background-color: #1f1f1f;
+    padding: 24px;
+    border: 2px solid #4cd137;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 500px;
+    margin-bottom: 40px;
+    box-shadow: 0 0 10px rgba(76, 209, 55, 0.3);
+
+    h3 {
+      font-size: 24px;
+      margin-bottom: 12px;
+      color: #4cd137;
+    }
+
+    p {
+      font-size: 18px;
+      margin: 4px 0;
+    }
+  }
+
+  .character-list {
+    width: 100%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    .character-card {
+      background-color: #1a1a1a;
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border: 1px solid #333;
+
+      .info {
+        p {
+          margin: 0;
+          font-size: 16px;
+        }
+      }
+
+      .select-btn {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+
+        &:disabled {
+          background-color: #555;
+          cursor: not-allowed;
+        }
+      }
+    }
+  }
+}
