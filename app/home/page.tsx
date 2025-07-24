@@ -29,7 +29,7 @@ export default function HomePage() {
     }
 
     checkCharacter()
-  }, [])
+  }, [router])
 
   if (checking) return null
 

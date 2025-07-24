@@ -1,10 +1,10 @@
-/* styles/base/_typography.scss */
+@use './variables' as vars;
 
 body {
-  font-family: $font-family;
+  font-family: vars.$font-family;
   font-size: 16px;
-  color: $text-color;
-  background-color: $background-color;
+  color: vars.$text-color;
+  background-color: vars.$background-color;
 }
 
 h1 {

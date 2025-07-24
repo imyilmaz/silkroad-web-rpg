@@ -1,17 +1,17 @@
-@import './base/reset';
-@import './base/variables';
-@import './base/mixins';
-@import './base/typography';
+@use './base/reset';
+@use './base/variables';
+@use './base/mixins';
+@use './base/typography';
 
-@import './pages/welcome';
-@import './pages/login';
-@import './pages/register';
-@import './pages/home';
+@use './pages/welcome';
+@use './pages/login' as pageLogin;;
+@use './pages/register';
+@use './pages/home';
 
-@import './admin/login';
-@import './admin/dashboard';
+@use './admin/login' as adminLogin;
+@use './admin/dashboard';
 
-@import './components/modal';
+@use './components/modal';
 
-@import './character/character-create';
-@import './character/character-page';
+@use './character/character-create';
+@use './character/character-page';
