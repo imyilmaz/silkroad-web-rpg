@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
 
+export const config = {
+  matcher: [
+    '/home',
+    '/character/:path*',
+    '/admin/:path*',
+    '/api/character/:path*',
+    '/api/admin/:path*',
+  ],
+}
+
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get('token')?.value
 

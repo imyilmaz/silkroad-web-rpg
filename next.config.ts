@@ -1,14 +1,7 @@
-import type { NextConfig } from "next";
+/** @type {import('next').NextConfig} */
+const nextConfig: import('next').NextConfig = {
+  reactStrictMode: true,
+  swcMinify: true,
+}
 
-const nextConfig: NextConfig = {
-  
-  matcher: [
-    '/home',
-    '/character/:path*',
-    '/admin/:path*',
-    '/api/character/:path*',
-    '/api/admin/:path*',
-  ],
-};
-
-export default nextConfig;
+export default nextConfig
