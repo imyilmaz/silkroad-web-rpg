@@ -1,5 +1,5 @@
 'use client'
-import './Loading.scss'
+import './loading.scss'
 
 const Loading = () => (
   <div className="loading-overlay">
