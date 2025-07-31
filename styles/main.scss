@@ -15,3 +15,7 @@
 
 @use './character/character-create';
 @use './character/character-page';
+@use './character/inventory';
+@use './character/stats';
+
+@use './game/cities/jangan';

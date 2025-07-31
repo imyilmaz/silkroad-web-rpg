@@ -32,15 +32,30 @@ model User {
 model Character {
   id     Int    @id @default(autoincrement())
   name   String @unique
-  race   String // örnek: "Asia", "Europe", "Arab"
+  race   String
   userId Int
   user   User   @relation(fields: [userId], references: [id])
 
-  level Int @default(1)
-  exp   Int @default(0)
+  level     Int      @default(1)
+  exp       Int      @default(0)
+  createdAt DateTime @default(now())
 
-  createdAt DateTime  @default(now())
-  sessions  Session[]
+  sessions Session[]
+
+  // Ekipman alanları
+  headId Int?
+  head   Item? @relation("HeadEquip", fields: [headId], references: [id])
+
+  bodyId Int?
+  body   Item? @relation("BodyEquip", fields: [bodyId], references: [id])
+
+  weaponId Int?
+  weapon   Item? @relation("WeaponEquip", fields: [weaponId], references: [id])
+
+  // Envanter
+  inventory InventoryItem[]
+
+  gold Int @default(0)
 }
 
 model Session {
@@ -49,4 +64,38 @@ model Session {
   characterId Int?
   user        User       @relation(fields: [userId], references: [id])
   character   Character? @relation(fields: [characterId], references: [id])
+}
+
+model Item {
+  id     Int      @id @default(autoincrement())
+  name   String
+  type   ItemType
+  rarity String?
+  icon   String? // görsel dosya adı veya URL
+
+  charactersHead   Character[] @relation("HeadEquip")
+  charactersBody   Character[] @relation("BodyEquip")
+  charactersWeapon Character[] @relation("WeaponEquip")
+
+  inventoryItems InventoryItem[]
+}
+
+model InventoryItem {
+  id          Int       @id @default(autoincrement())
+  character   Character @relation(fields: [characterId], references: [id])
+  characterId Int
+  item        Item      @relation(fields: [itemId], references: [id])
+  itemId      Int
+  slotIndex   Int // 0 - 95 arası
+  quantity    Int       @default(1)
+}
+
+enum ItemType {
+  HEAD
+  BODY
+  WEAPON
+  CONSUMABLE
+  MATERIAL
+  ACCESSORY
+  ETC
 }

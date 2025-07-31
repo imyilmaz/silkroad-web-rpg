@@ -1,0 +1,220 @@
+/* Ana skill panel */
+.skill-panel {
+  background: #1a1a1a;
+  border: 2px solid #2d2d2d;
+  padding: 1rem;
+  border-radius: 4px;
+  color: #f0f0f0;
+  font-family: Tahoma, sans-serif;
+  width: 720px;
+}
+
+/* Üstteki sekmeler (Weapon, Force) */
+.skill-tabs-navigation {
+  display: flex;
+  margin-bottom: 0.75rem;
+  gap: 6px;
+}
+
+.skill-tabs-navigation button {
+  background-color: #303030;
+  border: 1px solid #444;
+  padding: 0.4rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #bbb;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.skill-tabs-navigation button.active {
+  background-color: #0077cc;
+  color: #fff;
+}
+
+/* Alt sekmeler (bicheon, heuksal, cold, lightning...) */
+.skill-mastery-tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 1rem;
+}
+
+.skill-mastery-tabs button {
+  background-color: #202020;
+  border: 1px solid #444;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  color: #bbb;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.skill-mastery-tabs button.active {
+  background-color: #666;
+  color: #fff;
+}
+
+/* Skill grid - 8’li slot düzeni */
+.skill-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 60px);
+  gap: 10px;
+  justify-content: start;
+  margin-bottom: 1rem;
+}
+
+.skill-slot {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  background-color: #222;
+  border: 1px solid #444;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.skill-slot.locked {
+  opacity: 0.4;
+  filter: grayscale(100%);
+}
+
+.skill-slot.maxed {
+  border-color: gold;
+}
+
+.level-indicator {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: 0.6rem;
+  color: #0ff;
+}
+
+.skill-slot .buttons {
+  display: flex;
+  gap: 2px;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+
+.skill-slot .buttons button {
+  background-color: #111;
+  border: 1px solid #333;
+  color: #ccc;
+  font-size: 0.55rem;
+  padding: 1px 3px;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+/* Footer alanı */
+.skill-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  border-top: 1px solid #444;
+  padding-top: 0.5rem;
+  color: #ccc;
+}
+
+
+.skill-tree-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 4px 8px;
+  border-bottom: 1px solid #333;
+  background: #121212;
+
+  img {
+    width: 20px;
+    height: 20px;
+  }
+
+  .level {
+    margin-left: auto;
+    color: #ffcc00;
+  }
+}
+
+.skill-slot {
+  width: 40px;
+  height: 40px;
+  border: 1px solid #333;
+  background-color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-right: 4px;
+
+  img {
+    width: 80%;
+    height: 80%;
+  }
+
+  &.locked {
+    filter: grayscale(100%);
+    opacity: 0.4;
+  }
+
+  &.learned {
+    border-color: #0af;
+  }
+
+  &.maxed {
+    border-color: gold;
+    .max-label {
+      position: absolute;
+      bottom: 0;
+      right: 2px;
+      font-size: 10px;
+      color: #fff;
+    }
+  }
+
+  &.available {
+    border-color: #888;
+  }
+}
+
+.skill-branch {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+
+  .passive-info {
+    width: 32px;
+    height: 32px;
+    margin-right: 8px;
+
+    img {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  .skill-row {
+    display: flex;
+  }
+}
+
+.skill-tree {
+  padding: 8px;
+  background: #0e0e0e;
+
+  .branches {
+    margin-top: 8px;
+  }
+}
+
+.skill-tab {
+  padding: 8px;
+  background-color: #0b0b0b;
+}

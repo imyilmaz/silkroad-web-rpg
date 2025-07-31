@@ -1,0 +1,38 @@
+.city-screen{
+    .city-npcs{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        .btn{
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+
+            &:hover{
+                background-color: #0056b3;
+            }
+        }
+    }
+    .character-buttons{
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+
+        .btn{
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+
+            &:hover{
+                background-color: #0056b3;
+            }
+        }
+    }
+}

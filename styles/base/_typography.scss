@@ -6,17 +6,22 @@ body {
   color: vars.$text-color;
   background-color: vars.$background-color;
 }
-
+button{
+  color: vars.$text-color;
+}
 h1 {
   font-size: 2rem;
   margin-bottom: 1rem;
+  color: vars.$text-color;
 }
 
 h2 {
   font-size: 1.75rem;
   margin-bottom: 1rem;
+  color: vars.$text-color;
 }
 
 p {
   line-height: 1.6;
+  color: vars.$text-color;
 }

@@ -42,7 +42,7 @@ export default function HomePage() {
         <button className="btn primary" onClick={() => router.push('/character')}>
           Karakter Seç
         </button>
-        <button className="btn secondary">Oyuna Başla</button>
+        <button className="btn secondary" onClick={() => router.push('/cities/konya')}>Oyuna Başla</button>
       </div>
     </main>
   )

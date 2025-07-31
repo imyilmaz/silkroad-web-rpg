@@ -1,0 +1,112 @@
+/* styles/character-inventory.scss */
+
+.character-inventory-screen {
+    display: flex;
+    flex-direction: row;
+    gap: 20px;
+    padding: 20px;
+    color: #fff;
+    font-family: sans-serif;
+
+    .sidebar {
+        width: 100px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+
+        .btn {
+            padding: 8px;
+            background-color: #222;
+            border: 1px solid #444;
+            color: #fff;
+            cursor: pointer;
+            transition: 0.2s;
+
+            &:hover {
+                background-color: #333;
+            }
+        }
+    }
+
+    .inventory-content {
+        display: flex;
+        flex-direction: row;
+        gap: 24px;
+
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 48px);
+            grid-template-rows: repeat(12, 48px);
+            gap: 4px;
+
+            .inventory-slot {
+                width: 48px;
+                height: 48px;
+                background-color: #1c1c1c;
+                border: 1px solid #333;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+
+                img {
+                    max-width: 90%;
+                    max-height: 90%;
+                }
+            }
+        }
+
+        .equipment-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-width: 200px;
+            background-color: #111;
+            padding: 10px;
+            border: 1px solid #333;
+
+            .equipment-grid {
+                display: grid;
+                grid-template-columns: repeat(2, 48px);
+                grid-template-rows: repeat(7, 48px);
+                gap: 30px;
+                row-gap: 10px;
+                justify-content: center;
+                padding: 10px;
+                .empty{
+                    display: block;
+                    width: 100%;
+                    height: 100%;
+                }
+            }
+
+            div {
+                background-color: #1e1e1e;
+                padding: 6px;
+                text-align: center;
+                border: 1px solid #2c2c2c;
+            }
+
+            .btn {
+                margin-top: 10px;
+                padding: 6px;
+                background-color: #333;
+                color: #fff;
+                border: none;
+                cursor: pointer;
+
+                &:hover {
+                    background-color: #444;
+                }
+            }
+
+            &.costume-mode {
+                background-color: #191919;
+                border-color: #555;
+
+                div {
+                    background-color: #2a2a2a;
+                }
+            }
+        }
+    }
+}
