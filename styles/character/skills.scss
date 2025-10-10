@@ -57,7 +57,7 @@
 /* Skill grid - 8’li slot düzeni */
 .skill-grid {
   display: grid;
-  grid-template-columns: repeat(8, 60px);
+  grid-template-columns: repeat(8, 80px);
   gap: 10px;
   justify-content: start;
   margin-bottom: 1rem;
@@ -65,21 +65,81 @@
 
 .skill-slot {
   position: relative;
-  width: 60px;
-  height: 60px;
+  width: 80px;
+  height: 80px;
   background-color: #222;
   border: 1px solid #444;
   border-radius: 3px;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
   flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 6px 4px;
+  text-align: center;
+
+  .skill-name {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #f6f6f6;
+  }
+
+  .skill-meta {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.55rem;
+    color: #a9c8ff;
+  }
+
+  .skill-actions {
+    margin-top: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    button {
+      background: linear-gradient(135deg, #d7c4ff, #bfa3ff);
+      border: none;
+      border-radius: 6px;
+      padding: 4px 6px;
+      font-size: 0.6rem;
+      font-weight: 600;
+      color: #28193a;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 14px rgba(43, 20, 13, 0.18);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+    }
+
+    .skill-warning {
+      font-size: 0.55rem;
+      color: #ff8a80;
+      text-align: center;
+    }
+  }
 }
 
 .skill-slot.locked {
   opacity: 0.4;
   filter: grayscale(100%);
+}
+
+.skill-slot.learned {
+  border-color: #0af;
+}
+
+.skill-slot.available {
+  border-color: #888;
 }
 
 .skill-slot.maxed {
@@ -92,6 +152,14 @@
   right: 4px;
   font-size: 0.6rem;
   color: #0ff;
+}
+
+.rank-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 0.55rem;
+  color: #ffd966;
 }
 
 .skill-slot .buttons {
@@ -120,6 +188,15 @@
   border-top: 1px solid #444;
   padding-top: 0.5rem;
   color: #ccc;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .footer-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 200px;
+  }
 }
 
 
@@ -140,47 +217,6 @@
   .level {
     margin-left: auto;
     color: #ffcc00;
-  }
-}
-
-.skill-slot {
-  width: 40px;
-  height: 40px;
-  border: 1px solid #333;
-  background-color: #000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  margin-right: 4px;
-
-  img {
-    width: 80%;
-    height: 80%;
-  }
-
-  &.locked {
-    filter: grayscale(100%);
-    opacity: 0.4;
-  }
-
-  &.learned {
-    border-color: #0af;
-  }
-
-  &.maxed {
-    border-color: gold;
-    .max-label {
-      position: absolute;
-      bottom: 0;
-      right: 2px;
-      font-size: 10px;
-      color: #fff;
-    }
-  }
-
-  &.available {
-    border-color: #888;
   }
 }
 

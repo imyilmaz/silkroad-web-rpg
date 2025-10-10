@@ -1,23 +1,32 @@
-type Props = {
-  activeTab: 'weapon' | 'force'
-  onChange: (tab: 'weapon' | 'force') => void
-}
+'use client';
 
-export default function SkillTabsNavigation({ activeTab, onChange }: Props) {
+type TabOption = {
+  key: string;
+  label: string;
+};
+
+type Props = {
+  tabs: TabOption[];
+  activeKey: string;
+  onChange: (key: string) => void;
+};
+
+export default function SkillTabsNavigation({
+  tabs,
+  activeKey,
+  onChange,
+}: Props) {
   return (
-    <div className="skill-tabs">
-      <button
-        className={activeTab === 'weapon' ? 'active' : ''}
-        onClick={() => onChange('weapon')}
-      >
-        Weapon
-      </button>
-      <button
-        className={activeTab === 'force' ? 'active' : ''}
-        onClick={() => onChange('force')}
-      >
-        Force
-      </button>
+    <div className="skill-tabs-navigation">
+      {tabs.map((tab) => (
+        <button
+          key={tab.key}
+          className={activeKey === tab.key ? "active" : ""}
+          onClick={() => onChange(tab.key)}
+        >
+          {tab.label}
+        </button>
+      ))}
     </div>
-  )
+  );
 }

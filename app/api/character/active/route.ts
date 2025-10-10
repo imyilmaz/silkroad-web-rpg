@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getUserFromToken } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 
-export async function GET(_req: Request) {
+export async function GET() {
   const user = await getUserFromToken()
   if (!user) {
     return NextResponse.json({ message: 'Yetkisiz' }, { status: 401 })

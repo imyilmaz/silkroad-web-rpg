@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -22,27 +16,30 @@ model User {
   securityAnswer   String
   createdAt        DateTime    @default(now())
   isAdmin          Boolean     @default(false)
-  adminCode        String? // tek kullanımlık kod
-  adminCodeExpiry  DateTime? // süresi dolacak
+  adminCode        String?
+  adminCodeExpiry  DateTime?
   isBlocked        Boolean     @default(false)
   characters       Character[]
   sessions         Session[]
 }
 
 model Character {
-  id     Int    @id @default(autoincrement())
-  name   String @unique
-  race   String
-  userId Int
-  user   User   @relation(fields: [userId], references: [id])
-
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  race      String
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  originId  Int?
+  origin    CharacterOrigin? @relation(fields: [originId], references: [id])
   level     Int      @default(1)
   exp       Int      @default(0)
+  gold      Int      @default(0)
   createdAt DateTime @default(now())
 
-  sessions Session[]
+  sessions  Session[]
+  inventory InventoryItem[]
+  skills    CharacterSkill[]
 
-  // Ekipman alanları
   headId Int?
   head   Item? @relation("HeadEquip", fields: [headId], references: [id])
 
@@ -51,11 +48,6 @@ model Character {
 
   weaponId Int?
   weapon   Item? @relation("WeaponEquip", fields: [weaponId], references: [id])
-
-  // Envanter
-  inventory InventoryItem[]
-
-  gold Int @default(0)
 }
 
 model Session {
@@ -66,18 +58,47 @@ model Session {
   character   Character? @relation(fields: [characterId], references: [id])
 }
 
+model CharacterOrigin {
+  id            Int                  @id @default(autoincrement())
+  slug          String               @unique
+  name          String
+  description   String
+  focus         String?
+  affinity      String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  startingItems OriginStartingItem[]
+  characters    Character[]
+}
+
+model OriginStartingItem {
+  id        Int             @id @default(autoincrement())
+  originId  Int
+  origin    CharacterOrigin @relation(fields: [originId], references: [id])
+  itemId    Int
+  item      Item            @relation(fields: [itemId], references: [id])
+  quantity  Int             @default(1)
+  slotIndex Int?
+
+  @@unique([originId, itemId])
+}
+
 model Item {
   id     Int      @id @default(autoincrement())
   name   String
   type   ItemType
   rarity String?
-  icon   String? // görsel dosya adı veya URL
+  icon   String?
+  levelRequirement Int? @default(1)
+  description String?
 
   charactersHead   Character[] @relation("HeadEquip")
   charactersBody   Character[] @relation("BodyEquip")
   charactersWeapon Character[] @relation("WeaponEquip")
 
   inventoryItems InventoryItem[]
+  shopListings   ShopListing[]
+  startingOrigins OriginStartingItem[]
 }
 
 model InventoryItem {
@@ -86,8 +107,139 @@ model InventoryItem {
   characterId Int
   item        Item      @relation(fields: [itemId], references: [id])
   itemId      Int
-  slotIndex   Int // 0 - 95 arası
+  slotIndex   Int
   quantity    Int       @default(1)
+}
+
+model SkillDiscipline {
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique
+  name        String
+  description String
+  element     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  skills      Skill[]
+}
+
+model Skill {
+  id             Int       @id @default(autoincrement())
+  disciplineId   Int
+  discipline     SkillDiscipline @relation(fields: [disciplineId], references: [id])
+  slug           String    @unique
+  name           String
+  description    String
+  type           SkillType
+  rankMax        Int       @default(1)
+  resourceCost   Int?
+  cooldownSeconds Int?
+  requiredLevel  Int       @default(1)
+  unlockCost     Int       @default(0)
+  rankCost       Int       @default(0)
+  prerequisiteId Int?
+  prerequisite   Skill?    @relation("SkillDependency", fields: [prerequisiteId], references: [id])
+  childSkills    Skill[]   @relation("SkillDependency")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  characterRanks CharacterSkill[]
+}
+
+model CharacterSkill {
+  id          Int       @id @default(autoincrement())
+  characterId Int
+  skillId     Int
+  rank        Int       @default(0)
+  unlocked    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  character Character @relation(fields: [characterId], references: [id])
+  skill     Skill     @relation(fields: [skillId], references: [id])
+
+  @@unique([characterId, skillId])
+}
+
+model Region {
+  id          Int       @id @default(autoincrement())
+  slug        String    @unique
+  name        String
+  type        RegionType
+  description String
+  ambientTag  String?
+  levelMin    Int?
+  levelMax    Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  features              RegionFeature[]
+  featureTargets        RegionFeature[] @relation("FeatureTarget")
+  npcs                  Npc[]
+  connectionsFrom       RegionConnection[] @relation("RegionFrom")
+  connectionsTo         RegionConnection[] @relation("RegionTo")
+}
+
+model RegionConnection {
+  id            Int     @id @default(autoincrement())
+  fromRegionId  Int
+  toRegionId    Int
+  description   String
+  travelTime    Int?
+  requirement   String?
+  fromRegion    Region  @relation("RegionFrom", fields: [fromRegionId], references: [id])
+  toRegion      Region  @relation("RegionTo", fields: [toRegionId], references: [id])
+
+  @@unique([fromRegionId, toRegionId])
+}
+
+model Npc {
+  id          Int       @id @default(autoincrement())
+  slug        String    @unique
+  name        String
+  title       String?
+  role        String
+  type        NpcType
+  description String
+  regionId    Int
+  region      Region    @relation(fields: [regionId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  features     RegionFeature[]
+  shopListings ShopListing[]
+}
+
+model RegionFeature {
+  id             Int       @id @default(autoincrement())
+  regionId       Int
+  region         Region    @relation(fields: [regionId], references: [id])
+  slug           String
+  name           String
+  type           RegionFeatureType
+  description    String
+  icon           String?
+  npcId          Int?
+  npc            Npc?      @relation(fields: [npcId], references: [id])
+  targetRegionId Int?
+  targetRegion   Region?   @relation("FeatureTarget", fields: [targetRegionId], references: [id])
+  posX           Float?
+  posY           Float?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([regionId, slug])
+}
+
+model ShopListing {
+  id       Int  @id @default(autoincrement())
+  npcId    Int
+  npc      Npc  @relation(fields: [npcId], references: [id])
+  itemId   Int
+  item     Item @relation(fields: [itemId], references: [id])
+  price    Int
+  currency String @default("gold")
+  stock    Int?
+
+  @@unique([npcId, itemId])
 }
 
 enum ItemType {
@@ -98,4 +250,40 @@ enum ItemType {
   MATERIAL
   ACCESSORY
   ETC
+}
+
+enum SkillType {
+  ACTIVE
+  PASSIVE
+  BUFF
+}
+
+enum RegionType {
+  CITY
+  FIELD
+  DUNGEON
+  HARBOR
+  WILDERNESS
+}
+
+enum RegionFeatureType {
+  NPC
+  SERVICE
+  GATE
+  FERRY
+  DUNGEON_ENTRANCE
+  TRAINING
+  LORE
+}
+
+enum NpcType {
+  BLACKSMITH
+  ALCHEMIST
+  TAILOR
+  TRAINER
+  FERRYMASTER
+  QUESTGIVER
+  MERCHANT
+  GUARD
+  SAGE
 }

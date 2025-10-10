@@ -1,5 +1,5 @@
 {
-  "name": "silkroad-web-rpg",
+  "name": "milkroad-web-rpg",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -7,7 +7,8 @@
     "vercel-build": "prisma generate && next build",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",

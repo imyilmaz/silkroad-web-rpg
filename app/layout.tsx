@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import '../styles/main.scss';
+import { Toaster } from "sonner";
+import "../styles/main.scss";
+import { ActiveCharacterProvider } from "@/context/ActiveCharacterContext";
+import { InventoryProvider } from "@/context/InventoryContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "İpek Yolu Gezginleri",
-  description: "Bir 'ipekyolu' macerası",
+  title: "Milkroad Online",
+  description: "Süt yollarının efsanevi macerası.",
 };
 
 export default function RootLayout({
@@ -23,9 +26,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="tr">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        {children}
+        <ActiveCharacterProvider>
+          <InventoryProvider>
+            <Toaster position="top-center" richColors />
+            {children}
+          </InventoryProvider>
+        </ActiveCharacterProvider>
       </body>
     </html>
   );

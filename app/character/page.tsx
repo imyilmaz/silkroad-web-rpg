@@ -1,90 +1,98 @@
-'use client'
+'use client';
 
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Character = {
-  id: number
-  name: string
-  race: string
-  level: number
-  exp: number
-}
+  id: number;
+  name: string;
+  race: string;
+  level: number;
+  exp: number;
+};
+
+const originLabels: Record<string, string> = {
+  "sunweaver-nomad": "G\u00fcn Dokuyucusu G\u00f6\u00e7ebe",
+  "moondrift-oracle": "Ay S\u00fcz\u00fcl\u00fc Kahini",
+  "stormborne-guard": "F\u0131rt\u0131nado\u011fan Muhaf\u0131z",
+};
 
 const CharacterPage = () => {
-  const [characters, setCharacters] = useState<Character[]>([])
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const router = useRouter();
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchCharacters()
-  }, [])
+    fetchCharacters();
+  }, []);
 
   const fetchCharacters = async () => {
-    const res = await fetch('/api/character/list')
-    const data = await res.json()
+    const res = await fetch("/api/character/list");
+    const data = await res.json();
 
-    setCharacters(data.characters)
-    setSelectedId(data.activeCharacterId)
-  }
+    setCharacters(data.characters);
+    setSelectedId(data.activeCharacterId);
+  };
 
   const handleSelect = async (id: number) => {
-    const res = await fetch('/api/character/select', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/character/select", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
-    })
+    });
 
     if (res.ok) {
-      setSelectedId(id)
+      setSelectedId(id);
     }
-  }
+  };
 
   const handleDeselect = async () => {
-    const res = await fetch('/api/character/select', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: null }), // veya backend boş bırakılmış `id`'yi deselect anlamında kullanabilir
-    })
+    const res = await fetch("/api/character/select", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: null }),
+    });
 
     if (res.ok) {
-      setSelectedId(null)
+      setSelectedId(null);
     }
-  }
+  };
 
   return (
     <div className="character-page">
       <h2>Karakterlerin</h2>
 
       <button
-        onClick={() => window.location.href = '/home'}
+        onClick={() => router.push("/home")}
         style={{
-          margin: '40px auto',
-          padding: '12px 24px',
-          fontSize: '16px',
-          borderRadius: '8px',
-          backgroundColor: '#8c37d1ff',
-          color: '#fff',
-          border: 'none',
-          cursor: 'pointer',
+          margin: "40px auto",
+          padding: "12px 24px",
+          fontSize: "16px",
+          borderRadius: "8px",
+          backgroundColor: "#8c37d1ff",
+          color: "#fff",
+          border: "none",
+          cursor: "pointer",
         }}
       >
-        Şehire Dön
+        S\u0131\u011f\u0131na\u011fa D\u00f6n
       </button>
 
       {characters.length === 0 && (
         <button
-          onClick={() => window.location.href = '/character/create'}
+          onClick={() => router.push("/character/create")}
           style={{
-            margin: '40px auto',
-            padding: '12px 24px',
-            fontSize: '16px',
-            borderRadius: '8px',
-            backgroundColor: '#d8b800ff',
-            color: '#fff',
-            border: 'none',
-            cursor: 'pointer',
+            margin: "40px auto",
+            padding: "12px 24px",
+            fontSize: "16px",
+            borderRadius: "8px",
+            backgroundColor: "#d8b800ff",
+            color: "#fff",
+            border: "none",
+            cursor: "pointer",
           }}
         >
-          Karakter Oluştur
+          Karakter Olu\u015ftur
         </button>
       )}
 
@@ -95,23 +103,32 @@ const CharacterPage = () => {
             .filter((char) => char.id === selectedId)
             .map((char) => (
               <div key={char.id}>
-                <p><strong>İsim:</strong> {char.name}</p>
-                <p><strong>Irk:</strong> {char.race}</p>
-                <p><strong>Seviye:</strong> {char.level}</p>
-                <p><strong>XP:</strong> {char.exp}</p>
+                <p>
+                  <strong>\u0130sim:</strong> {char.name}
+                </p>
+                <p>
+                  <strong>K\u00f6ken:</strong>{" "}
+                  {originLabels[char.race] ?? char.race}
+                </p>
+                <p>
+                  <strong>Seviye:</strong> {char.level}
+                </p>
+                <p>
+                  <strong>Deneyim:</strong> {char.exp}
+                </p>
                 <button
                   className="deselect-btn"
                   onClick={handleDeselect}
                   style={{
-                    marginTop: '12px',
-                    padding: '8px 16px',
-                    backgroundColor: '#999',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '6px',
+                    marginTop: "12px",
+                    padding: "8px 16px",
+                    backgroundColor: "#999",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
                   }}
                 >
-                  Seçimi Kaldır
+                  Se\u00e7imi Kald\u0131r
                 </button>
               </div>
             ))}
@@ -124,20 +141,22 @@ const CharacterPage = () => {
           .map((char) => (
             <div key={char.id} className="character-card">
               <div className="info">
-                <p>{char.name} ({char.race})</p>
-                <p>Lv: {char.level}</p>
+                <p>
+                  {char.name} ({originLabels[char.race] ?? char.race})
+                </p>
+                <p>Seviye: {char.level}</p>
               </div>
               <button
                 className="select-btn"
                 onClick={() => handleSelect(char.id)}
               >
-                Seç
+                Se\u00e7
               </button>
             </div>
           ))}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default CharacterPage
+export default CharacterPage;

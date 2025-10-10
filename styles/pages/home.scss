@@ -1,42 +1,48 @@
 .home-screen {
   text-align: center;
-  padding-top: 10vh;
+  padding: 12vh 2rem 6vh;
+  background: radial-gradient(circle at top, #fff8ec 0%, #f3e8ff 70%, transparent 100%);
+  border-radius: 32px;
 
   h1 {
-    font-size: 2rem;
-    margin-bottom: 1rem;
+    font-size: 2.4rem;
+    margin-bottom: 1.25rem;
+    color: #2a1c10;
   }
 
   p {
-    font-size: 1.2rem;
-    margin-bottom: 2rem;
+    font-size: 1.15rem;
+    margin-bottom: 1.75rem;
+    color: rgba(38, 24, 12, 0.8);
   }
 
   .home-buttons {
     display: flex;
-    gap: 1rem;
+    gap: 1.2rem;
     justify-content: center;
 
     .btn {
-      padding: 0.75rem 1.5rem;
+      padding: 0.85rem 1.7rem;
       border: none;
-      border-radius: 6px;
+      border-radius: 14px;
       font-size: 1rem;
+      font-weight: 600;
       cursor: pointer;
-      transition: 0.3s ease;
+      transition: transform 0.2s, box-shadow 0.2s;
 
       &.primary {
-        background-color: #27ae60;
-        color: white;
+        background: linear-gradient(135deg, #d7c4ff, #bfa3ff);
+        color: #28193a;
       }
 
       &.secondary {
-        background-color: #2980b9;
-        color: white;
+        background: linear-gradient(135deg, #f2c26b, #f89c6c);
+        color: #2d1b11;
       }
 
       &:hover {
-        opacity: 0.8;
+        transform: translateY(-3px);
+        box-shadow: 0 16px 24px rgba(43, 20, 13, 0.18);
       }
     }
   }

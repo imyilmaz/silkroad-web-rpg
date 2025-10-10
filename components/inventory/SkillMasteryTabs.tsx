@@ -1,39 +1,27 @@
-type Mastery =
-  | 'bicheon'
-  | 'heuksal'
-  | 'pacheon'
-  | 'cold'
-  | 'lightning'
-  | 'fire'
-  | 'force'
+'use client';
 
 type Props = {
-  mainTab: 'weapon' | 'force'
-  activeMastery: Mastery
-  onSelect: (tab: Props['activeMastery']) => void
-}
+  tabs: Array<{ key: string; label: string }>;
+  activeKey: string;
+  onSelect: (key: string) => void;
+};
 
 export default function SkillMasteryTabs({
-  mainTab,
-  activeMastery,
+  tabs,
+  activeKey,
   onSelect,
 }: Props) {
-  const tabs =
-    mainTab === 'weapon'
-      ? ['bicheon', 'heuksal', 'pacheon']
-      : ['cold', 'lightning', 'fire', 'force']
-
   return (
-    <div className="mastery-tabs">
+    <div className="skill-mastery-tabs">
       {tabs.map((tab) => (
         <button
-          key={tab}
-          className={activeMastery === tab ? 'active' : ''}
-          onClick={() => onSelect(tab as Mastery)}
+          key={tab.key}
+          className={activeKey === tab.key ? "active" : ""}
+          onClick={() => onSelect(tab.key)}
         >
-          {tab}
+          {tab.label}
         </button>
       ))}
     </div>
-  )
+  );
 }

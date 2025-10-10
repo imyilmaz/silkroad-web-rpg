@@ -2,38 +2,44 @@
 
 .welcome-screen {
   text-align: center;
-  padding-top: 10vh;
+  padding: 14vh 2rem 8vh;
+  background: radial-gradient(circle at top, #fdf4eb 0%, #f1e4ff 55%, transparent 100%);
+  border-radius: 36px;
+  box-shadow: inset 0 0 0 1px rgba(240, 224, 202, 0.4);
 
   h1 {
-    font-size: 2rem;
-    margin-bottom: 2rem;
+    font-size: 2.6rem;
+    margin-bottom: 2.4rem;
+    color: #2a1c10;
   }
 
   .buttons {
     display: flex;
-    gap: 1rem;
+    gap: 1.2rem;
     justify-content: center;
 
     .btn {
-      padding: 0.75rem 1.5rem;
-      font-size: 1rem;
+      padding: 0.9rem 1.8rem;
+      font-size: 1.05rem;
       border: none;
-      border-radius: 6px;
+      border-radius: 16px;
       cursor: pointer;
-      transition: 0.3s;
+      transition: transform 0.2s, box-shadow 0.2s;
+      font-weight: 600;
 
       &.register {
-        background-color: #27ae60;
-        color: white;
+        background: linear-gradient(135deg, #d7c4ff, #bfa3ff);
+        color: #28193a;
       }
 
       &.login {
-        background-color: #2980b9;
-        color: white;
+        background: linear-gradient(135deg, #f2c26b, #f89c6c);
+        color: #2d1b11;
       }
 
       &:hover {
-        opacity: 0.8;
+        transform: translateY(-3px);
+        box-shadow: 0 20px 28px rgba(42, 28, 16, 0.18);
       }
     }
   }
