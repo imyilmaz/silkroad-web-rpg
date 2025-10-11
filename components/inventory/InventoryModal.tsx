@@ -102,6 +102,10 @@ const SLOT_LAYOUT: SlotMeta[][] = [
   ],
 ];
 
+const slotLabels = new Map<EquipmentSlot, string>(
+  SLOT_LAYOUT.flat().map((item) => [item.slot, item.label]),
+);
+
 type InventoryModalProps = {
   characterId: number;
   characterName: string;
@@ -156,7 +160,6 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
       setLoading(true);
       setError(null);
       setInfo(null);
-
       try {
         const response = await fetch(
           `/api/character/${characterId}/inventory`,
@@ -165,7 +168,6 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
           const payload = await response.json().catch(() => null);
           throw new Error(payload?.message ?? "Envanter yüklenemedi.");
         }
-
         const payload = (await response.json()) as InventoryResponse;
         if (!cancelled) {
           setData(payload);
@@ -238,7 +240,8 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        throw new Error(payload?.message ?? "Eşya giydirilemedi.");
+        setError(payload?.message ?? "Eşya giydirilemedi.");
+        return;
       }
 
       const payload = (await response.json()) as InventoryResponse;
@@ -276,7 +279,8 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
-        throw new Error(payload?.message ?? "Ekipman çıkarılamadı.");
+        setError(payload?.message ?? "Ekipman çıkarılamadı.");
+        return;
       }
 
       const payload = (await response.json()) as InventoryResponse;
@@ -305,6 +309,11 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 
     handleHoverEnd();
     void handleEquip(slotItem);
+  };
+
+  const handleVendorClick = (listing: VendorListing) => {
+    handleHoverEnd();
+    vendor?.onRequestBuy(listing);
   };
 
   const handleHoverStart = (
@@ -392,11 +401,6 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
       {listing.stock !== null && <p>Stok: {listing.stock}</p>}
     </div>
   );
-
-  const handleVendorClick = (listing: VendorListing) => {
-    handleHoverEnd();
-    vendor?.onRequestBuy(listing);
-  };
 
   const isVendorMode = mode === "vendor" && Boolean(vendor);
 
@@ -564,7 +568,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                         }
                         onMouseEnter={(event) =>
                           item
-                            ? handleHoverStart(event, renderItemTooltip(item, 1))
+                            ? handleHoverStart(event, renderItemTooltip(item))
                             : undefined
                         }
                         onMouseLeave={handleHoverEnd}
