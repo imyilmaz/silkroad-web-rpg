@@ -41,7 +41,7 @@ const CreateCharacterPage = () => {
         setOriginsLoading(true);
         const response = await fetch("/api/reference/origins");
         if (!response.ok) {
-          throw new Error("K\u00f6ken listesi getirilemedi.");
+          throw new Error("Köken listesi getirilemedi.");
         }
         const payload = await response.json();
         const received: OriginOption[] = payload.origins ?? [];
@@ -55,7 +55,7 @@ const CreateCharacterPage = () => {
         setOriginsError(
           fetchError instanceof Error
             ? fetchError.message
-            : "K\u00f6ken listesi al\u0131namad\u0131.",
+            : "Köken listesi alınamadı.",
         );
       } finally {
         setOriginsLoading(false);
@@ -84,9 +84,9 @@ const CreateCharacterPage = () => {
     const data = await response.json();
 
     if (!response.ok) {
-      setError(data.message || "Karakter olu\u015fturulamad\u0131.");
+      setError(data.message || "Karakter oluşturulamadı.");
     } else {
-      setSuccess("Karakter olu\u015fturuldu!");
+      setSuccess("Karakter oluşturuldu!");
       router.push("/character");
     }
   };
@@ -94,20 +94,20 @@ const CreateCharacterPage = () => {
   return (
     <div className="character-create-page">
       <div className="form-box">
-        <h2>Karakter Olu\u015ftur</h2>
+        <h2>Karakter Oluştur</h2>
         <form onSubmit={handleSubmit}>
           <input
             type="text"
-            placeholder="Karakter Ad\u0131"
+            placeholder="Karakter Adı"
             value={name}
             onChange={(event) => setName(event.target.value)}
             required
           />
 
           <div className="form-group">
-            <label>K\u00f6ken Se\u00e7imi</label>
+            <label>Köken Seçimi</label>
             {originsLoading ? (
-              <p>Milkroad k\u00f6kenleri getiriliyor...</p>
+              <p>Milkroad kökenleri getiriliyor...</p>
             ) : originsError ? (
               <p className="error">{originsError}</p>
             ) : (
@@ -141,7 +141,7 @@ const CreateCharacterPage = () => {
               )}
               {activeOrigin.startingItems.length > 0 && (
                 <div className="origin-items">
-                  <strong>Ba\u015flang\u0131\u00e7 E\u015fyalar\u0131:</strong>
+                  <strong>Başlangıç Eşyaları:</strong>
                   <ul>
                     {activeOrigin.startingItems.map((entry) => (
                       <li
@@ -157,7 +157,7 @@ const CreateCharacterPage = () => {
           )}
 
           <button type="submit" disabled={!originSlug || originsLoading}>
-            Olu\u015ftur
+            Oluştur
           </button>
         </form>
 

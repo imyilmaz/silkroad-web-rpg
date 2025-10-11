@@ -44,7 +44,7 @@ const EditUserModal = ({
 
   const handleDelete = () => {
     const confirmDelete = window.confirm(
-      "Bu kullan\u0131c\u0131y\u0131 kal\u0131c\u0131 olarak silmek istedi\u011finize emin misiniz?",
+      "Bu kullanıcıyı kalıcı olarak silmek istediğinize emin misiniz?",
     );
     if (confirmDelete) {
       onDelete(user.id);
@@ -57,9 +57,9 @@ const EditUserModal = ({
       <Dialog.Portal>
         <Dialog.Overlay className="modal-overlay" />
         <Dialog.Content className="modal-content">
-          <Dialog.Title>Kullan\u0131c\u0131y\u0131 D\u00fczenle</Dialog.Title>
+          <Dialog.Title>Kullanıcıyı Düzenle</Dialog.Title>
           <div className="form-group">
-            <label>Kullan\u0131c\u0131 Ad\u0131</label>
+            <label>Kullanıcı Adı</label>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
@@ -74,7 +74,7 @@ const EditUserModal = ({
             />
           </div>
           <div className="form-group">
-            <label>Yeni \u015eifre (opsiyonel)</label>
+            <label>Yeni Şifre (opsiyonel)</label>
             <input
               type="password"
               value={password}
@@ -86,7 +86,7 @@ const EditUserModal = ({
               Kaydet
             </button>
             <button className="delete-btn" onClick={handleDelete}>
-              Kal\u0131c\u0131 Olarak Sil
+              Kalıcı Olarak Sil
             </button>
           </div>
           <Dialog.Close className="close-btn">Kapat</Dialog.Close>

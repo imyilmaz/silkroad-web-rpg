@@ -40,7 +40,7 @@ const LoginPage = () => {
     setSuccess("");
 
     if (parseInt(form.captchaAnswer, 10) !== correctedCaptcha) {
-      setError("Bot do\u011frulamas\u0131 ba\u015far\u0131s\u0131z.");
+      setError("Bot doğrulaması başarısız.");
       generateCaptcha();
       return;
     }
@@ -60,9 +60,9 @@ const LoginPage = () => {
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.message || "Bir hata olu\u015ftu.");
+      setError(data.message || "Bir hata oluştu.");
     } else {
-      setSuccess("Giri\u015f ba\u015far\u0131l\u0131! Ana ekrana y\u00f6nlendiriliyorsunuz...");
+      setSuccess("Giriş başarılı! Ana ekrana yönlendiriliyorsunuz...");
       setTimeout(() => {
         router.push("/home");
       }, 2000);
@@ -71,7 +71,7 @@ const LoginPage = () => {
 
   return (
     <div className="login-page">
-      <h2>Giri\u015f Yap</h2>
+      <h2>Giriş Yap</h2>
       <form onSubmit={handleSubmit}>
         <input
           type="email"
@@ -84,7 +84,7 @@ const LoginPage = () => {
         <input
           type="password"
           name="password"
-          placeholder="\u015eifre"
+          placeholder="Şifre"
           value={form.password}
           onChange={handleChange}
           required
@@ -92,7 +92,7 @@ const LoginPage = () => {
 
         <div>
           <label>
-            Bot olmad\u0131\u011f\u0131n\u0131z\u0131 kan\u0131tlay\u0131n: {captcha.a} + {captcha.b} = ?
+            Bot olmadığınızı kanıtlayın: {captcha.a} + {captcha.b} = ?
           </label>
           <div style={{ display: "flex", gap: "8px" }}>
             <input
@@ -110,7 +110,7 @@ const LoginPage = () => {
         </div>
 
         <button type="submit" disabled={loading}>
-          Giri\u015f Yap
+          Giriş Yap
         </button>
       </form>
 

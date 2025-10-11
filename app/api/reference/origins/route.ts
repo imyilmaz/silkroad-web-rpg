@@ -25,13 +25,15 @@ export async function GET() {
           itemId: entry.itemId,
           quantity: entry.quantity,
           slotIndex: entry.slotIndex,
-          item: {
-            name: entry.item.name,
-            type: entry.item.type,
-            rarity: entry.item.rarity,
-            icon: entry.item.icon,
-            description: entry.item.description,
-          },
+          item: entry.item
+            ? {
+                name: entry.item.name,
+                type: entry.item.type,
+                rarity: entry.item.rarity,
+                icon: entry.item.icon,
+                description: entry.item.description,
+              }
+            : null,
         })),
       })),
     });

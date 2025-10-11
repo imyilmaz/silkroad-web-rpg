@@ -26,9 +26,12 @@ export async function GET() {
     hasCharacter: true,
     selected: true,
     character: {
+      id: session.character.id,
       name: session.character.name,
       level: session.character.level,
       race: session.character.race,
+      exp: session.character.exp,
+      gold: session.character.gold,
     },
   })
 }

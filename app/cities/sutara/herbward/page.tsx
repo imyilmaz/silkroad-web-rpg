@@ -5,8 +5,8 @@ export default function HerbwardPage() {
     <main className="city-screen">
       <h1>Bitki Mahzeni</h1>
       <p>
-        \u015eifal\u0131 otlar kademeli olarak kurutuluyor. \u0130ksir tarifleri ve
-        sa\u011fl\u0131k stoklar\u0131 i\u00e7in pazar alan\u0131 burada haz\u0131rlan\u0131yor.
+        Şifalı otlar kademeli olarak kurutuluyor. İksir tarifleri ve
+        sağlık stokları için pazar alanı burada hazırlanıyor.
       </p>
     </main>
   );

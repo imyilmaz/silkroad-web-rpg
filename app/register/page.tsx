@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import Loading from "@/components/loading/loading";
 
 const securityQuestions = [
-  "Favori s\u00fct \u00fcr\u00fcn\u00fcn\u00fcz nedir?",
-  "\u0130lk evcil hayvan\u0131n\u0131z\u0131n ad\u0131 neydi?",
-  "\u00c7ocuklu\u011funuzda ya\u015fad\u0131\u011f\u0131n\u0131z kasaban\u0131n ad\u0131?",
-  "Size ilham veren bir ki\u015fi var m\u0131?",
+  "Favori süt ürününüz nedir?",
+  "İlk evcil hayvanınızın adı neydi?",
+  "Çocukluğunuzda yaşadığınız kasabanın adı?",
+  "Size ilham veren bir kişi var mı?",
 ];
 
 const RegisterPage = () => {
@@ -53,13 +53,13 @@ const RegisterPage = () => {
     setSuccess("");
 
     if (form.password !== form.confirmPassword) {
-      setError("\u015eifreler uyu\u015fmuyor.");
+      setError("Şifreler uyuşmuyor.");
       setLoading(false);
       return;
     }
 
     if (parseInt(form.captchaAnswer, 10) !== correctedCaptcha) {
-      setError("Bot do\u011frulamas\u0131 ba\u015far\u0131s\u0131z.");
+      setError("Bot doğrulaması başarısız.");
       setLoading(false);
       generateCaptcha();
       return;
@@ -74,11 +74,11 @@ const RegisterPage = () => {
     const data = await res.json();
 
     if (!res.ok) {
-      setError(data.message || "Kay\u0131t s\u0131ras\u0131nda bir sorun olu\u015ftu.");
+      setError(data.message || "Kayıt sırasında bir sorun oluştu.");
       setLoading(false);
     } else {
       setSuccess(
-        "Kay\u0131t ba\u015far\u0131l\u0131! Giri\u015f sayfas\u0131na y\u00f6nlendiriliyorsunuz...",
+        "Kayıt başarılı! Giriş sayfasına yönlendiriliyorsunuz...",
       );
       setTimeout(() => {
         router.push("/login");
@@ -88,12 +88,12 @@ const RegisterPage = () => {
 
   return (
     <div className="register-page">
-      <h2>Kay\u0131t Ol</h2>
+      <h2>Kayıt Ol</h2>
       <form onSubmit={handleSubmit}>
         <input
           type="text"
           name="username"
-          placeholder="Kullan\u0131c\u0131 Ad\u0131"
+          placeholder="Kullanıcı Adı"
           value={form.username}
           onChange={handleChange}
           required
@@ -109,7 +109,7 @@ const RegisterPage = () => {
         <input
           type="password"
           name="password"
-          placeholder="\u015eifre"
+          placeholder="Şifre"
           value={form.password}
           onChange={handleChange}
           required
@@ -117,7 +117,7 @@ const RegisterPage = () => {
         <input
           type="password"
           name="confirmPassword"
-          placeholder="\u015eifre Tekrar"
+          placeholder="Şifre Tekrar"
           value={form.confirmPassword}
           onChange={handleChange}
           required
@@ -146,7 +146,7 @@ const RegisterPage = () => {
 
         <div>
           <label>
-            Bot olmad\u0131\u011f\u0131n\u0131z\u0131 kan\u0131tlay\u0131n: {captcha.a} + {captcha.b} = ?
+            Bot olmadığınızı kanıtlayın: {captcha.a} + {captcha.b} = ?
           </label>
           <div style={{ display: "flex", gap: "8px" }}>
             <input
@@ -164,7 +164,7 @@ const RegisterPage = () => {
         </div>
 
         <button type="submit" disabled={loading}>
-          Kay\u0131t Ol
+          Kayıt Ol
         </button>
       </form>
 

@@ -66,7 +66,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
     if (!region) {
       return NextResponse.json(
-        { message: "B\u00f6lge bulunamad\u0131." },
+        { message: "Bölge bulunamadı." },
         { status: 404 },
       );
     }
@@ -98,6 +98,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
     }));
 
     const npcList = region.npcs.map((npc) => ({
+      id: npc.id,
       slug: npc.slug,
       name: npc.name,
       title: npc.title,
@@ -154,7 +155,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
   } catch (error) {
     console.error("City API error:", error);
     return NextResponse.json(
-      { message: "B\u00f6lge verisi getirilemedi." },
+      { message: "Bölge verisi getirilemedi." },
       { status: 500 },
     );
   }

@@ -10,9 +10,9 @@ type Character = {
 };
 
 const originLabels: Record<string, string> = {
-  "sunweaver-nomad": "G\u00fcn Dokuyucusu G\u00f6\u00e7ebe",
-  "moondrift-oracle": "Ay S\u00fcz\u00fcl\u00fc Kahini",
-  "stormborne-guard": "F\u0131rt\u0131nado\u011fan Muhaf\u0131z",
+  "sunweaver-nomad": "Gün Dokuyucusu Göçebe",
+  "moondrift-oracle": "Ay Süzülü Kahini",
+  "stormborne-guard": "Fırtınadoğan Muhafız",
 };
 
 export default function HomePage() {
@@ -41,21 +41,21 @@ export default function HomePage() {
 
   return (
     <main className="home-screen">
-      <h1>Ho\u015f geldin, {character?.name}!</h1>
+      <h1>Hoş geldin, {character?.name}!</h1>
       <p>
-        Seviye: {character?.level} | K\u00f6ken:{" "}
+        Seviye: {character?.level} | Köken:{" "}
         {character ? originLabels[character.race] ?? character.race : ""}
       </p>
-      <p>S\u00fct yollar\u0131ndaki maceran seni \u00e7a\u011f\u0131r\u0131yor.</p>
+      <p>Süt yollarındaki maceran seni çağırıyor.</p>
       <div className="home-buttons">
         <button className="btn primary" onClick={() => router.push("/character")}>
-          Karakter Se\u00e7
+          Karakter Seç
         </button>
         <button
           className="btn secondary"
           onClick={() => router.push("/cities/sutara")}
         >
-          Oyuna Ba\u015fla
+          Oyuna Başla
         </button>
       </div>
     </main>

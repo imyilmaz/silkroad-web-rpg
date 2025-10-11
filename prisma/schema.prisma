@@ -39,6 +39,7 @@ model Character {
   sessions  Session[]
   inventory InventoryItem[]
   skills    CharacterSkill[]
+  equipment CharacterEquipment[]
 
   headId Int?
   head   Item? @relation("HeadEquip", fields: [headId], references: [id])
@@ -91,6 +92,8 @@ model Item {
   icon   String?
   levelRequirement Int? @default(1)
   description String?
+  equipmentSlot EquipmentSlot?
+  handsRequired Int @default(1)
 
   charactersHead   Character[] @relation("HeadEquip")
   charactersBody   Character[] @relation("BodyEquip")
@@ -107,8 +110,10 @@ model InventoryItem {
   characterId Int
   item        Item      @relation(fields: [itemId], references: [id])
   itemId      Int
-  slotIndex   Int
+  slotIndex   Int?
   quantity    Int       @default(1)
+  isEquipped  Boolean   @default(false)
+  equipment   CharacterEquipment[]
 }
 
 model SkillDiscipline {
@@ -252,6 +257,23 @@ enum ItemType {
   ETC
 }
 
+enum EquipmentSlot {
+  WEAPON_MAIN
+  WEAPON_OFF
+  HEAD
+  SHOULDERS
+  CHEST
+  GLOVES
+  LEGS
+  FEET
+  NECK
+  EARRING
+  RING_1
+  RING_2
+  SPECIAL
+  JOB
+}
+
 enum SkillType {
   ACTIVE
   PASSIVE
@@ -286,4 +308,15 @@ enum NpcType {
   MERCHANT
   GUARD
   SAGE
+}
+
+model CharacterEquipment {
+  id              Int            @id @default(autoincrement())
+  characterId     Int
+  character       Character      @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  slot            EquipmentSlot
+  inventoryItemId Int?
+  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+
+  @@unique([characterId, slot])
 }
