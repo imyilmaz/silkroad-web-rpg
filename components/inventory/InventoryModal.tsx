@@ -2,6 +2,23 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
+type ItemStatsSummary = {
+  phyAtkMin: number | null;
+  phyAtkMax: number | null;
+  magAtkMin: number | null;
+  magAtkMax: number | null;
+  attackDistance: number | null;
+  attackRate: number | null;
+  critical: number | null;
+  durability: number | null;
+  parryRatio: number | null;
+  blockRatio: number | null;
+  phyReinforceMin: number | null;
+  phyReinforceMax: number | null;
+  magReinforceMin: number | null;
+  magReinforceMax: number | null;
+};
+
 type EquipmentSlot =
   | "WEAPON_MAIN"
   | "WEAPON_OFF"
@@ -17,7 +34,6 @@ type EquipmentSlot =
   | "RING_2"
   | "SPECIAL"
   | "JOB";
-
 type ItemSummary = {
   id: number;
   name: string;
@@ -26,6 +42,9 @@ type ItemSummary = {
   type: string;
   equipmentSlot: EquipmentSlot | null;
   handsRequired: number;
+  levelRequirement: number | null;
+  description: string | null;
+  stats: ItemStatsSummary | null;
 };
 
 export type InventoryItemPayload = {
@@ -56,6 +75,7 @@ type VendorListing = {
     name: string;
     type: string;
     rarity: string | null;
+    icon: string | null;
     description: string | null;
   };
 };
@@ -106,6 +126,43 @@ const slotLabels = new Map<EquipmentSlot, string>(
   SLOT_LAYOUT.flat().map((item) => [item.slot, item.label]),
 );
 
+const DEFAULT_ICON = "/assets/no-image.svg";
+
+function resolveIconPath(icon?: string | null) {
+  if (!icon) return DEFAULT_ICON;
+  const normalized = icon.replace(/\\/g, "/");
+  if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
+    return normalized;
+  }
+  if (normalized.startsWith("/")) {
+    return normalized;
+  }
+  const trimmed = normalized.replace(/^(\.\/|public\/)/, "");
+  return `/assets/${trimmed}`;
+}
+
+const STAT_CONFIG: Array<{ key: keyof ItemStatsSummary; label: string }> = [
+  { key: "phyAtkMin", label: "Fiziksel Saldýrý Min" },
+  { key: "phyAtkMax", label: "Fiziksel Saldýrý Maks" },
+  { key: "magAtkMin", label: "Büyü Saldýrý Min" },
+  { key: "magAtkMax", label: "Büyü Saldýrý Maks" },
+  { key: "attackRate", label: "Saldýrý Hýzý" },
+  { key: "attackDistance", label: "Saldýrý Menzili" },
+  { key: "critical", label: "Kritik" },
+  { key: "parryRatio", label: "Savunma Oraný" },
+  { key: "blockRatio", label: "Blok Oraný" },
+  { key: "durability", label: "Dayanýklýlýk" },
+  { key: "phyReinforceMin", label: "Fiziksel Takviye Min" },
+  { key: "phyReinforceMax", label: "Fiziksel Takviye Maks" },
+  { key: "magReinforceMin", label: "Büyü Takviye Min" },
+  { key: "magReinforceMax", label: "Büyü Takviye Maks" },
+];
+
+function formatNumber(value: number | null | undefined) {
+  if (value === null || value === undefined) return null;
+  if (Number.isInteger(value)) return value.toString();
+  return value.toFixed(2).replace(/\.?0+$/, "");
+}
 type InventoryModalProps = {
   characterId: number;
   characterName: string;
@@ -367,21 +424,50 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
     setTooltip(null);
   }, [mode, vendor, data]);
 
-  const renderItemTooltip = (item: ItemSummary, quantity?: number) => (
-    <div className="inventory-tooltip__content">
-      <strong>{item.name}</strong>
-      {item.rarity && (
-        <span className="inventory-tooltip__rarity">
-          {formatRarity(item.rarity)}
-        </span>
-      )}
-      <p>TÃ¼r: {item.type.toLowerCase()}</p>
-      {item.equipmentSlot && (
-        <p>Slot: {item.equipmentSlot.toLowerCase()}</p>
-      )}
-      {quantity !== undefined && <p>Adet: {quantity}</p>}
-    </div>
-  );
+  const renderItemTooltip = (item: ItemSummary, quantity?: number) => {
+    const statEntries =
+      item.stats !== null
+        ? STAT_CONFIG.filter(({ key }) => item.stats && item.stats[key] !== null)
+        : [];
+
+    return (
+      <div className="inventory-tooltip__content">
+        <strong>{item.name}</strong>
+        {item.rarity && (
+          <span className="inventory-tooltip__rarity">
+            {formatRarity(item.rarity)}
+          </span>
+        )}
+        <ul className="inventory-tooltip__list">
+          <li>Tur: {item.type.toLowerCase()}</li>
+          {item.equipmentSlot && (
+            <li>Slot: {item.equipmentSlot.toLowerCase()}</li>
+          )}
+          {item.levelRequirement !== null && item.levelRequirement > 0 && (
+            <li>Seviye: {item.levelRequirement}</li>
+          )}
+          <li>Eller: {item.handsRequired > 1 ? "iki elli" : "tek elli"}</li>
+          {quantity !== undefined && <li>Adet: {quantity}</li>}
+        </ul>
+        {statEntries.length > 0 && (
+          <ul className="inventory-tooltip__list inventory-tooltip__list--stats">
+            {statEntries.map(({ key, label }) => {
+              const formatted = formatNumber(item.stats?.[key]);
+              if (!formatted) return null;
+              return (
+                <li key={key}>
+                  {label}: {formatted}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {item.description && (
+          <p className="inventory-tooltip__description">{item.description}</p>
+        )}
+      </div>
+    );
+  };
 
   const renderVendorTooltip = (listing: VendorListing) => (
     <div className="inventory-tooltip__content">
@@ -391,14 +477,16 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
           {formatRarity(listing.item.rarity)}
         </span>
       )}
-      <p>TÃ¼r: {listing.item.type.toLowerCase()}</p>
+      <ul className="inventory-tooltip__list">
+        <li>Tur: {listing.item.type.toLowerCase()}</li>
+        <li>Fiyat: {listing.price} altin</li>
+        {listing.stock !== null && <li>Stok: {listing.stock}</li>}
+      </ul>
       {listing.item.description && (
         <p className="inventory-tooltip__description">
           {listing.item.description}
         </p>
       )}
-      <p>Fiyat: {listing.price} altÄ±n</p>
-      {listing.stock !== null && <p>Stok: {listing.stock}</p>}
     </div>
   );
 
@@ -456,37 +544,18 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                     type="button"
                     key={listing.id}
                     className="vendor-slot"
+                    style={{
+                      backgroundImage: `url('${resolveIconPath(
+                        listing.item.icon,
+                      )}')`,
+                    }}
                     disabled={submitting}
                     onClick={() => handleVendorClick(listing)}
                     onMouseEnter={(event) =>
                       handleHoverStart(event, renderVendorTooltip(listing))
                     }
                     onMouseLeave={handleHoverEnd}
-                  >
-                    <div className="vendor-slot__header">
-                      <strong>{listing.item.name}</strong>
-                      {listing.item.rarity && (
-                        <span className="vendor-slot__rarity">
-                          {formatRarity(listing.item.rarity)}
-                        </span>
-                      )}
-                    </div>
-                    {listing.item.description && (
-                      <p className="vendor-slot__desc">
-                        {listing.item.description}
-                      </p>
-                    )}
-                    <div className="vendor-slot__footer">
-                      <span className="vendor-slot__price">
-                        {listing.price} altÄ±n
-                      </span>
-                      {listing.stock !== null && (
-                        <span className="vendor-slot__stock">
-                          Stok: {listing.stock}
-                        </span>
-                      )}
-                    </div>
-                  </button>
+                  />
                 ))}
               </div>
             </section>
@@ -500,8 +569,17 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                   type="button"
                   key={index}
                   className={`inventory-slot${
-                    slotItem ? " inventory-slot--filled" : ""
+                    slotItem ? " inventory-slot--filled" : " inventory-slot--empty"
                   }${isVendorMode ? " inventory-slot--vendor" : ""}`}
+                  style={
+                    slotItem
+                      ? {
+                          backgroundImage: `url('${resolveIconPath(
+                            slotItem.item.icon,
+                          )}')`,
+                        }
+                      : undefined
+                  }
                   onClick={() => handleInventoryClick(slotItem)}
                   onMouseEnter={(event) =>
                     slotItem
@@ -514,23 +592,11 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                   onMouseLeave={handleHoverEnd}
                   disabled={!slotItem || submitting}
                 >
-                  {slotItem ? (
-                    <>
-                      <span className="inventory-slot__name">
-                        {slotItem.item.name}
-                      </span>
-                      {slotItem.quantity > 1 && (
-                        <span className="inventory-slot__quantity">
-                          Ã—{slotItem.quantity}
-                        </span>
-                      )}
-                      <span className="inventory-slot__hint">
-                        {isVendorMode ? "Sat" : "Giydir"}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="inventory-slot__placeholder">BoÅŸ</span>
-                  )}
+                  {slotItem && slotItem.quantity > 1 ? (
+                    <span className="inventory-slot__stack">
+                      x{slotItem.quantity}
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -563,6 +629,11 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                         className={`equipment-slot${
                           item ? " equipment-slot--filled" : ""
                         }${isTwoHand ? " equipment-slot--twohand" : ""}`}
+                        style={{
+                          backgroundImage: `url('${resolveIconPath(
+                            item?.icon ?? null,
+                          )}')`,
+                        }}
                         onClick={() =>
                           item && !submitting ? handleUnequip(slot) : null
                         }
@@ -575,24 +646,8 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
                         disabled={!item || submitting}
                       >
                         <span className="equipment-slot__label">{label}</span>
-                        {item ? (
-                          <div className="equipment-slot__content">
-                            <strong>{item.name}</strong>
-                            {item.rarity && (
-                              <span className="equipment-slot__rarity">
-                                {formatRarity(item.rarity)}
-                              </span>
-                            )}
-                            {isTwoHand && (
-                              <span className="equipment-slot__note">
-                                Ä°ki elli
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="equipment-slot__placeholder">
-                            BoÅŸ
-                          </span>
+                        {item && isTwoHand && (
+                          <span className="equipment-slot__tag">Iki elli</span>
                         )}
                       </button>
                     );
@@ -617,4 +672,3 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
 };
 
 export default InventoryModal;
-

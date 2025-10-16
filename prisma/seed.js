@@ -1,7 +1,402 @@
 /* eslint-disable no-console */
+const fs = require("fs");
+const path = require("path");
 const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
+
+const ITEMS_JSON_PATH = path.join(__dirname, "..", "items_full_clean.json");
+const DEFAULT_ICON_PATH = "assets/no-image.svg";
+
+const SLOT_TOKEN_MAP = {
+  HA: "HEAD",
+  CA: "HEAD",
+  BA: "CHEST",
+  SA: "SHOULDERS",
+  AA: "GLOVES",
+  LA: "LEGS",
+  FA: "FEET",
+};
+
+const ACCESSORY_KEYWORDS = [
+  { keyword: "RING", slot: "RING_1" },
+  { keyword: "EARRING", slot: "EARRING" },
+  { keyword: "NECKLACE", slot: "NECK" },
+  { keyword: "AMULET", slot: "NECK" },
+];
+
+const TWO_HANDED_WEAPON_TYPES = new Set([
+  "weapon/bow",
+  "weapon/spear",
+  "weapon/staff",
+]);
+
+function mapItemType(item) {
+  const metaType = item?.meta?.type;
+  const codeName = (item?.codeName ?? "").toUpperCase();
+
+  if (metaType) {
+    const normalized = String(metaType).toLowerCase();
+    if (normalized.startsWith("weapon")) return "WEAPON";
+    if (normalized.startsWith("armor")) return "BODY";
+    if (normalized === "shield") return "WEAPON";
+    if (normalized.includes("material")) return "MATERIAL";
+    if (normalized.includes("consume")) return "CONSUMABLE";
+    if (normalized === "etc") return "ETC";
+  }
+
+  if (ACCESSORY_KEYWORDS.some(({ keyword }) => codeName.includes(keyword))) {
+    return "ACCESSORY";
+  }
+
+  return "ETC";
+}
+
+function deriveEquipmentSlot(item) {
+  const metaType = item?.meta?.type ? String(item.meta.type).toLowerCase() : null;
+  if (metaType) {
+    if (metaType === "shield") return "WEAPON_OFF";
+    if (metaType.startsWith("weapon")) return "WEAPON_MAIN";
+  }
+
+  const codeName = (item?.codeName ?? "").toUpperCase();
+  for (const { keyword, slot } of ACCESSORY_KEYWORDS) {
+    if (codeName.includes(keyword)) return slot;
+  }
+
+  const slotToken =
+    extractSlotTokenFromCodeName(codeName) ??
+    extractSlotTokenFromIcon(item?.visual?.icon);
+  if (slotToken) return slotToken;
+
+  if (metaType && metaType.startsWith("armor")) {
+    return "CHEST";
+  }
+
+  return null;
+}
+
+function deriveHandsRequired(item, equipmentSlot) {
+  const metaType = item?.meta?.type ? String(item.meta.type).toLowerCase() : null;
+  if (equipmentSlot === "WEAPON_OFF") {
+    return 1;
+  }
+  if (metaType && TWO_HANDED_WEAPON_TYPES.has(metaType)) {
+    return 2;
+  }
+  return 1;
+}
+
+function extractSlotTokenFromCodeName(codeName) {
+  if (!codeName) return null;
+  const parts = codeName.split("_");
+  for (const part of parts) {
+    if (SLOT_TOKEN_MAP[part]) {
+      return SLOT_TOKEN_MAP[part];
+    }
+  }
+  return null;
+}
+
+function extractSlotTokenFromIcon(iconPath) {
+  if (!iconPath) return null;
+  const fileName = iconPath.split(/[/\\]/).pop();
+  if (!fileName) return null;
+  const nameWithoutExt = fileName.split(".")[0];
+  if (!nameWithoutExt) return null;
+  const suffix = nameWithoutExt.split("_").pop()?.toUpperCase();
+  if (suffix && SLOT_TOKEN_MAP[suffix]) {
+    return SLOT_TOKEN_MAP[suffix];
+  }
+  return null;
+}
+function loadItemDataset() {
+  if (!fs.existsSync(ITEMS_JSON_PATH)) {
+    return [];
+  }
+
+  try {
+    const raw = fs.readFileSync(ITEMS_JSON_PATH, "utf-8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    console.error("[seed] Item veri seti okunamadı:", error);
+    return [];
+  }
+}
+
+function collectJsonItem(item, aggregated) {
+  if (!item || !item.id) return;
+
+  const slug = String(item.id);
+  const meta = item.meta ?? {};
+  const required = meta.required ?? {};
+  const stats = item.stats ?? {};
+  const pricing = item.pricing ?? {};
+  const upgrade = item.upgrade ?? {};
+  const translations = item.name ?? {};
+  const descriptions = item.desc ?? {};
+
+  const primaryName =
+    translations.en ?? translations.tr ?? item.codeName ?? slug;
+  const primaryDesc = descriptions.en ?? descriptions.tr ?? null;
+  const magicOptionLimit =
+    normalizeInt(meta.magicOptionLimit) ??
+    normalizeInt(item.magicOptions?.limit);
+  const equipmentSlot = deriveEquipmentSlot(item);
+  const handsRequired = deriveHandsRequired(item, equipmentSlot);
+
+  aggregated.baseItems.push({
+    slug,
+    codeName: item.codeName ?? null,
+    stringNameKey: item.stringID?.name ?? null,
+    stringDescKey: item.stringID?.desc ?? null,
+    name: primaryName,
+    type: mapItemType(item),
+    rarity: meta.rarity ?? null,
+    icon: item.visual?.icon ?? DEFAULT_ICON_PATH,
+    modelPath: item.visual?.model ?? null,
+    levelRequirement: normalizeInt(required.charLevel),
+    description: primaryDesc,
+    equipmentSlot,
+    handsRequired,
+    degree: normalizeInt(meta.degree),
+    race: mapRace(meta.race),
+    categoryPath: meta.type ?? null,
+    magicOptionLimit,
+    bindType: meta.bind ?? null,
+    canUseAdvancedElixir: Boolean(item.flags?.canUseAdvancedElixir ?? false),
+  });
+
+  const translationEntries = Object.entries(translations).filter(
+    ([lang, value]) => Boolean(lang) && value !== undefined && value !== null,
+  );
+
+  if (translationEntries.length > 0) {
+    for (const [language, value] of translationEntries) {
+      aggregated.translations.push({
+        slug,
+        language,
+        name: value ?? null,
+        description: descriptions?.[language] ?? null,
+      });
+    }
+  } else {
+    aggregated.translations.push({
+      slug,
+      language: "en",
+      name: primaryName,
+      description: primaryDesc,
+    });
+  }
+
+  const minLevel = normalizeInt(required.charLevel);
+  const masteryCode = required.mastery ?? null;
+  const gender = mapGender(required.gender);
+  if (minLevel !== null || masteryCode || gender) {
+    aggregated.requirements.push({
+      slug,
+      minLevel,
+      masteryCode,
+      gender,
+    });
+  }
+
+  const statRecord = {
+    slug,
+    phyAtkMin: normalizeNumber(stats.phyAtkMin),
+    phyAtkMax: normalizeNumber(stats.phyAtkMax),
+    magAtkMin: normalizeNumber(stats.magAtkMin),
+    magAtkMax: normalizeNumber(stats.magAtkMax),
+    attackDistance: normalizeNumber(stats.attackDistance),
+    attackRate: normalizeNumber(stats.attackRate),
+    critical: normalizeNumber(stats.critical),
+    durability: normalizeNumber(stats.durability),
+    parryRatio: normalizeNumber(stats.parryRatio),
+    blockRatio: normalizeNumber(stats.blockRatio),
+    phyReinforceMin: normalizeNumber(stats.phyReinforceMin),
+    phyReinforceMax: normalizeNumber(stats.phyReinforceMax),
+    magReinforceMin: normalizeNumber(stats.magReinforceMin),
+    magReinforceMax: normalizeNumber(stats.magReinforceMax),
+  };
+
+  if (hasAnyStatValue(statRecord)) {
+    aggregated.stats.push(statRecord);
+  }
+
+  const price = normalizePrice(pricing.price);
+  const stackSize = normalizeInt(pricing.stack);
+  if (price !== null || stackSize !== null) {
+    aggregated.pricing.push({
+      slug,
+      price,
+      stackSize,
+      currency: pricing.currency ?? "gold",
+    });
+  }
+
+  const upgradeModel = mapUpgradeModel(upgrade.model);
+  const maxPlus = normalizeInt(upgrade.maxPlus);
+  const tableKey = upgrade.tableKey ?? null;
+  const formulaWhite = upgrade.formula?.whiteStats ?? null;
+  const formulaReinforce = upgrade.formula?.reinforce ?? null;
+
+  if (
+    upgradeModel ||
+    tableKey ||
+    maxPlus !== null ||
+    formulaWhite ||
+    formulaReinforce
+  ) {
+    aggregated.upgrades.push({
+      slug,
+      model: upgradeModel,
+      tableKey,
+      maxPlus,
+      formulaWhite,
+      formulaReinforce,
+    });
+  }
+}
+
+function collectCustomItem(item, aggregated) {
+  if (!item) return;
+  const slug = item.slug ?? item.key;
+  if (!slug) return;
+
+  const name = item.name ?? slug;
+  const derivedSlot = item.equipmentSlot ?? deriveEquipmentSlot(item);
+  const handsRequired =
+    item.handsRequired ?? deriveHandsRequired(item, derivedSlot);
+  aggregated.baseItems.push({
+    slug,
+    codeName: item.codeName ?? slug.toUpperCase(),
+    stringNameKey: null,
+    stringDescKey: null,
+    name,
+    type: item.type ?? "ETC",
+    rarity: item.rarity ?? null,
+    icon: item.icon ?? DEFAULT_ICON_PATH,
+    modelPath: item.modelPath ?? null,
+    levelRequirement: normalizeInt(item.levelRequirement),
+    description: item.description ?? null,
+    equipmentSlot: derivedSlot ?? null,
+    handsRequired,
+    degree: normalizeInt(item.degree),
+    race: "GLOBAL",
+    categoryPath: item.categoryPath ?? "custom",
+    magicOptionLimit: normalizeInt(item.magicOptionLimit),
+    bindType: item.bindType ?? null,
+    canUseAdvancedElixir: Boolean(item.canUseAdvancedElixir ?? false),
+  });
+
+  aggregated.translations.push({
+    slug,
+    language: "en",
+    name,
+    description: item.description ?? null,
+  });
+
+  const minLevel = normalizeInt(item.levelRequirement);
+  if (minLevel !== null) {
+    aggregated.requirements.push({
+      slug,
+      minLevel,
+      masteryCode: null,
+      gender: null,
+    });
+  }
+
+  if (item.price !== undefined || item.stackSize !== undefined) {
+    aggregated.pricing.push({
+      slug,
+      price: item.price ?? null,
+      stackSize: normalizeInt(item.stackSize),
+      currency: item.currency ?? "gold",
+    });
+  }
+}
+
+async function createManyChunked(delegate, data, chunkSize = 1000, skipDuplicates = false) {
+  if (!Array.isArray(data) || data.length === 0) return;
+
+  for (let i = 0; i < data.length; i += chunkSize) {
+    const chunk = data.slice(i, i + chunkSize);
+    if (chunk.length === 0) continue;
+    await delegate.createMany({
+      data: chunk,
+      skipDuplicates,
+    });
+  }
+}
+
+function mapRace(value) {
+  if (value === "CH" || value === "EU") return value;
+  return "GLOBAL";
+}
+
+function mapItemType(metaType) {
+  if (!metaType) return "ETC";
+  const normalized = String(metaType).toLowerCase();
+  if (normalized.startsWith("weapon") || normalized === "shield") {
+    return "WEAPON";
+  }
+  if (normalized.includes("accessory")) {
+    return "ACCESSORY";
+  }
+  if (normalized.startsWith("armor")) {
+    return "BODY";
+  }
+  if (normalized.includes("consume")) {
+    return "CONSUMABLE";
+  }
+  if (normalized.includes("material")) {
+    return "MATERIAL";
+  }
+  if (normalized === "etc") {
+    return "ETC";
+  }
+  return "ETC";
+}
+
+function mapGender(value) {
+  if (!value) return null;
+  const normalized = String(value).toLowerCase();
+  if (normalized.startsWith("m")) return "MALE";
+  if (normalized.startsWith("f")) return "FEMALE";
+  return null;
+}
+
+function mapUpgradeModel(value) {
+  if (!value) return null;
+  const normalized = String(value).toUpperCase();
+  if (normalized === "TABLE") return "TABLE";
+  return null;
+}
+
+function normalizeNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function normalizeInt(value) {
+  const num = normalizeNumber(value);
+  if (num === null) return null;
+  return Math.trunc(num);
+}
+
+function normalizePrice(value) {
+  const num = normalizeInt(value);
+  if (num === null) return null;
+  return num < 0 ? null : num;
+}
+
+function hasAnyStatValue(record) {
+  return Object.entries(record).some(
+    ([key, value]) => key !== "slug" && value !== null,
+  );
+}
 
 const itemsData = [
   {
@@ -545,27 +940,130 @@ async function clearDatabase() {
   await prisma.skill.deleteMany();
   await prisma.skillDiscipline.deleteMany();
   await prisma.characterOrigin.deleteMany();
+  await prisma.gameSetting.deleteMany();
   await prisma.item.deleteMany();
 }
 
 async function seedItems() {
-  const itemMap = new Map();
-  for (const item of itemsData) {
-    const record = await prisma.item.create({
-      data: {
-        name: item.name,
-        type: item.type,
-        rarity: item.rarity,
-        icon: item.icon,
-        levelRequirement: item.levelRequirement,
-        description: item.description,
-        equipmentSlot: item.equipmentSlot ?? null,
-        handsRequired: item.handsRequired ?? 1,
-      },
-    });
-    itemMap.set(item.key, record);
+  const aggregated = {
+    baseItems: [],
+    translations: [],
+    requirements: [],
+    stats: [],
+    pricing: [],
+    upgrades: [],
+  };
+
+  const jsonItems = loadItemDataset();
+  if (jsonItems.length === 0) {
+    console.warn(
+      `[seed] items_full_clean.json bulunamadı ya da boş. Yalnızca örnek itemler yüklenecek.`,
+    );
   }
-  return itemMap;
+
+  for (const jsonItem of jsonItems) {
+    collectJsonItem(jsonItem, aggregated);
+  }
+
+  for (const customItem of itemsData) {
+    collectCustomItem(customItem, aggregated);
+  }
+
+  await createManyChunked(prisma.item, aggregated.baseItems, 500, true);
+
+  const slugs = aggregated.baseItems
+    .map((entry) => entry.slug)
+    .filter((slug) => typeof slug === "string" && slug.length > 0);
+
+  const itemRecords = await prisma.item.findMany({
+    where: { slug: { in: slugs } },
+  });
+
+  const idMap = new Map(itemRecords.map((record) => [record.slug, record.id]));
+
+  const translationData = aggregated.translations
+    .map((entry) => {
+      const itemId = idMap.get(entry.slug);
+      if (!itemId) return null;
+      return {
+        itemId,
+        language: entry.language,
+        name: entry.name,
+        description: entry.description,
+      };
+    })
+    .filter(Boolean);
+  await createManyChunked(prisma.itemTranslation, translationData, 1000);
+
+  const requirementData = aggregated.requirements
+    .map((entry) => {
+      const itemId = idMap.get(entry.slug);
+      if (!itemId) return null;
+      return {
+        itemId,
+        minLevel: entry.minLevel,
+        masteryCode: entry.masteryCode,
+        gender: entry.gender,
+      };
+    })
+    .filter(
+      (row) => row && (row.minLevel !== null || row.masteryCode || row.gender),
+    );
+  await createManyChunked(prisma.itemRequirement, requirementData, 1000);
+
+  const statData = aggregated.stats
+    .map((entry) => {
+      const itemId = idMap.get(entry.slug);
+      if (!itemId) return null;
+      const { slug, ...rest } = entry;
+      return { itemId, ...rest };
+    })
+    .filter(Boolean);
+  await createManyChunked(prisma.itemStatProfile, statData, 500);
+
+  const pricingData = aggregated.pricing
+    .map((entry) => {
+      const itemId = idMap.get(entry.slug);
+      if (!itemId) return null;
+      return {
+        itemId,
+        price: entry.price,
+        stackSize: entry.stackSize,
+        currency: entry.currency ?? "gold",
+      };
+    })
+    .filter(Boolean);
+  await createManyChunked(prisma.itemPricing, pricingData, 1000);
+
+  const upgradeData = aggregated.upgrades
+    .map((entry) => {
+      const itemId = idMap.get(entry.slug);
+      if (!itemId) return null;
+      return {
+        itemId,
+        model: entry.model,
+        tableKey: entry.tableKey,
+        maxPlus: entry.maxPlus,
+        formulaWhite: entry.formulaWhite,
+        formulaReinforce: entry.formulaReinforce,
+      };
+    })
+    .filter(
+      (row) =>
+        row &&
+        (row.model ||
+          row.tableKey ||
+          row.maxPlus !== null ||
+          row.formulaWhite ||
+          row.formulaReinforce),
+    );
+  await createManyChunked(prisma.itemUpgradeProfile, upgradeData, 1000);
+
+  console.log(
+    `Seeded ${jsonItems.length} JSON item şablonu ve ${itemsData.length} özel item.`,
+  );
+
+  return new Map(itemRecords.map((record) => [record.slug, record]));
 }
 
 async function seedOrigins(itemMap) {
@@ -774,12 +1272,37 @@ async function seedRegions(itemMap) {
   return { regionMap, npcMap };
 }
 
+async function seedGameSettings() {
+  const maxLevelSetting = {
+    current: 50,
+    plannedCaps: [60, 70, 80, 90],
+  };
+
+  await prisma.gameSetting.upsert({
+    where: { key: "maxCharacterLevel" },
+    update: {
+      value: maxLevelSetting,
+      description:
+        "Maksimum karakter seviyesi ve gelecekteki genişletme planı.",
+    },
+    create: {
+      key: "maxCharacterLevel",
+      value: maxLevelSetting,
+      description:
+        "Maksimum karakter seviyesi ve gelecekteki genişletme planı.",
+    },
+  });
+}
+
 async function main() {
   console.log("Resetting Milkroad data...");
   await clearDatabase();
 
   console.log("Seeding items...");
   const itemMap = await seedItems();
+
+  console.log("Seeding game settings...");
+  await seedGameSettings();
 
   console.log("Seeding origins...");
   await seedOrigins(itemMap);

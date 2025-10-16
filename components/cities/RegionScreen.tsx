@@ -124,7 +124,7 @@ type ConfirmState =
       type: "sell";
       npc: RegionNpc;
       inventoryItem: InventoryItemPayload;
-      salePrice: number;
+      saleUnitPrice: number;
     };
 
 type Props = {
@@ -162,6 +162,9 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
   const [buyQuantity, setBuyQuantity] = useState(1);
   const [buyMaxQuantity, setBuyMaxQuantity] = useState(1);
   const [buyStackable, setBuyStackable] = useState(false);
+  const [sellQuantity, setSellQuantity] = useState(1);
+  const [sellMaxQuantity, setSellMaxQuantity] = useState(1);
+  const [sellStackable, setSellStackable] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -287,13 +290,24 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
   const computeSalePrice = (
     npc: RegionNpc,
     item: InventoryItemPayload,
+    quantity = 1,
   ): number => {
     const listing = npc.shopListings.find(
       (entry) => entry.itemId === item.item.id,
     );
     const basePrice = listing?.price ?? 1;
     const unit = Math.max(1, Math.floor((basePrice * 2) / 3));
-    return unit * Math.max(1, item.quantity);
+    return unit * Math.max(1, quantity);
+  };
+
+  const resetTradeState = () => {
+    setConfirmState(null);
+    setBuyQuantity(1);
+    setBuyStackable(false);
+    setBuyMaxQuantity(1);
+    setSellQuantity(1);
+    setSellStackable(false);
+    setSellMaxQuantity(1);
   };
 
   const handleRequestSell = (inventoryItem: InventoryItemPayload) => {
@@ -302,12 +316,24 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
       return;
     }
 
-    const salePrice = computeSalePrice(activeVendor, inventoryItem);
+    const isStackable = STACKABLE_TYPES.has(inventoryItem.item.type);
+    const maxQuantity = isStackable
+      ? Math.max(1, Math.min(STACK_LIMIT, inventoryItem.quantity))
+      : 1;
+
+    setSellStackable(isStackable);
+    setSellMaxQuantity(maxQuantity);
+    setSellQuantity(isStackable ? 1 : 1);
+    setBuyStackable(false);
+    setBuyQuantity(1);
+    setBuyMaxQuantity(1);
+
+    const saleUnitPrice = computeSalePrice(activeVendor, inventoryItem, 1);
     setConfirmState({
       type: "sell",
       npc: activeVendor,
       inventoryItem,
-      salePrice,
+      saleUnitPrice,
     });
   };
 
@@ -334,6 +360,9 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
     setBuyStackable(isStackable);
     setBuyMaxQuantity(isStackable ? Math.max(1, maxQuantity) : 1);
     setBuyQuantity(1);
+    setSellStackable(false);
+    setSellQuantity(1);
+    setSellMaxQuantity(1);
 
     setConfirmState({
       type: "buy",
@@ -345,7 +374,7 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
   const confirmPurchase = async () => {
     if (!confirmState || confirmState.type !== "buy" || !character) return;
 
-  const quantity = buyStackable ? buyQuantity : 1;
+    const quantity = buyStackable ? buyQuantity : 1;
 
     try {
       const response = await fetch(
@@ -402,10 +431,7 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
         return prev;
       });
 
-      setConfirmState(null);
-      setBuyQuantity(1);
-      setBuyStackable(false);
-      setBuyMaxQuantity(1);
+      resetTradeState();
       showNotification(
         `${confirmState.listing.item.name} x${quantity} satın alındı.`,
       );
@@ -422,6 +448,8 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
   const confirmSale = async () => {
     if (!confirmState || confirmState.type !== "sell" || !character) return;
 
+    const quantity = sellStackable ? sellQuantity : 1;
+
     try {
       const response = await fetch(
         `/api/character/${character.id}/shop/purchase`,
@@ -432,6 +460,7 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
             action: "sell",
             npcId: confirmState.npc.id,
             inventoryItemId: confirmState.inventoryItem.id,
+            quantity,
           }),
         },
       );
@@ -452,14 +481,14 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
         return prev;
       });
 
-      setConfirmState(null);
-      setBuyQuantity(1);
-      setBuyStackable(false);
-      setBuyMaxQuantity(1);
+      const fallbackSaleAmount =
+        confirmState.saleUnitPrice * Math.max(1, quantity);
+      resetTradeState();
       showNotification(
-        `${confirmState.inventoryItem.item.name} satıldı (+${
-          payload?.saleAmount ?? confirmState.salePrice
-        } altın).`,
+        `${confirmState.inventoryItem.item.name} x${Math.max(
+          1,
+          quantity,
+        )} satıldı (+${payload?.saleAmount ?? fallbackSaleAmount} altın).`,
       );
     } catch (err) {
       console.error("Sell failed:", err);
@@ -571,19 +600,64 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
                 </button>
               </div>
             ) : null}
+            {confirmState.type === "sell" && sellStackable ? (
+              <div className="region-quantity">
+                <button
+                  type="button"
+                  className="region-quantity__btn"
+                  onClick={() =>
+                    setSellQuantity((value) => Math.max(1, value - 1))
+                  }
+                  disabled={sellQuantity <= 1}
+                >
+                  -
+                </button>
+                <input
+                  type="number"
+                  min={1}
+                  max={sellMaxQuantity}
+                  value={sellQuantity}
+                  onChange={(event) => {
+                    const next = Number.parseInt(event.target.value, 10);
+                    if (Number.isNaN(next)) {
+                      setSellQuantity(1);
+                      return;
+                    }
+                    setSellQuantity(
+                      Math.min(sellMaxQuantity, Math.max(1, next)),
+                    );
+                  }}
+                />
+                <button
+                  type="button"
+                  className="region-quantity__btn"
+                  onClick={() =>
+                    setSellQuantity((value) =>
+                      Math.min(sellMaxQuantity, value + 1),
+                    )
+                  }
+                  disabled={sellQuantity >= sellMaxQuantity}
+                >
+                  +
+                </button>
+              </div>
+            ) : null}
             <p className="region-dialog__price">
               {confirmState.type === "buy"
                 ? `Fiyat: ${
                     confirmState.listing.price *
                     (buyStackable ? buyQuantity : 1)
                   } altın`
-                : `Satış bedeli: ${confirmState.salePrice} altın`}
+                : `Satış bedeli: ${
+                    confirmState.saleUnitPrice *
+                    (sellStackable ? sellQuantity : 1)
+                  } altın`}
             </p>
             <div className="region-dialog__actions">
               <button
                 type="button"
                 className="region-button"
-                onClick={() => { setConfirmState(null); setBuyQuantity(1); setBuyStackable(false); setBuyMaxQuantity(1); }}
+                onClick={resetTradeState}
               >
                 Hayır
               </button>
@@ -802,6 +876,7 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
                       name: listing.item.name,
                       type: listing.item.type,
                       rarity: listing.item.rarity,
+                      icon: listing.item.icon,
                       description: listing.item.description,
                     },
                   })),

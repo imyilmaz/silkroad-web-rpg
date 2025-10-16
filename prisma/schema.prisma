@@ -24,17 +24,17 @@ model User {
 }
 
 model Character {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
+  id        Int              @id @default(autoincrement())
+  name      String           @unique
   race      String
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
+  user      User             @relation(fields: [userId], references: [id])
   originId  Int?
   origin    CharacterOrigin? @relation(fields: [originId], references: [id])
-  level     Int      @default(1)
-  exp       Int      @default(0)
-  gold      Int      @default(0)
-  createdAt DateTime @default(now())
+  level     Int              @default(1)
+  exp       Int              @default(0)
+  gold      Int              @default(0)
+  createdAt DateTime         @default(now())
 
   sessions  Session[]
   inventory InventoryItem[]
@@ -85,34 +85,119 @@ model OriginStartingItem {
 }
 
 model Item {
-  id     Int      @id @default(autoincrement())
-  name   String
-  type   ItemType
-  rarity String?
-  icon   String?
-  levelRequirement Int? @default(1)
-  description String?
-  equipmentSlot EquipmentSlot?
-  handsRequired Int @default(1)
+  id                   Int            @id @default(autoincrement())
+  slug                 String?        @unique
+  codeName             String?
+  stringNameKey        String?
+  stringDescKey        String?
+  name                 String
+  type                 ItemType
+  rarity               String?
+  icon                 String?
+  modelPath            String?
+  levelRequirement     Int?           @default(1)
+  description          String?
+  equipmentSlot        EquipmentSlot?
+  handsRequired        Int            @default(1)
+  degree               Int?
+  race                 ItemRace       @default(GLOBAL)
+  categoryPath         String?
+  magicOptionLimit     Int?
+  bindType             String?
+  canUseAdvancedElixir Boolean        @default(false)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @default(now()) @updatedAt
 
   charactersHead   Character[] @relation("HeadEquip")
   charactersBody   Character[] @relation("BodyEquip")
   charactersWeapon Character[] @relation("WeaponEquip")
 
-  inventoryItems InventoryItem[]
-  shopListings   ShopListing[]
+  inventoryItems  InventoryItem[]
+  shopListings    ShopListing[]
   startingOrigins OriginStartingItem[]
+
+  translations   ItemTranslation[]
+  requirement    ItemRequirement?
+  statsProfile   ItemStatProfile?
+  pricing        ItemPricing?
+  upgradeProfile ItemUpgradeProfile?
+}
+
+model ItemTranslation {
+  id          Int      @id @default(autoincrement())
+  itemId      Int
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  language    String
+  name        String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([itemId, language])
+}
+
+model ItemRequirement {
+  itemId      Int         @id
+  item        Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  minLevel    Int?
+  masteryCode String?
+  gender      ItemGender?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model ItemStatProfile {
+  itemId          Int      @id
+  item            Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  phyAtkMin       Float?
+  phyAtkMax       Float?
+  magAtkMin       Float?
+  magAtkMax       Float?
+  attackDistance  Float?
+  attackRate      Float?
+  critical        Float?
+  durability      Float?
+  parryRatio      Float?
+  blockRatio      Float?
+  phyReinforceMin Float?
+  phyReinforceMax Float?
+  magReinforceMin Float?
+  magReinforceMax Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ItemPricing {
+  itemId    Int      @id
+  item      Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  price     Int?
+  stackSize Int?
+  currency  String   @default("gold")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ItemUpgradeProfile {
+  itemId           Int               @id
+  item             Item              @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  model            ItemUpgradeModel?
+  tableKey         String?
+  maxPlus          Int?
+  formulaWhite     String?
+  formulaReinforce String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 }
 
 model InventoryItem {
-  id          Int       @id @default(autoincrement())
-  character   Character @relation(fields: [characterId], references: [id])
+  id          Int                  @id @default(autoincrement())
+  character   Character            @relation(fields: [characterId], references: [id])
   characterId Int
-  item        Item      @relation(fields: [itemId], references: [id])
+  item        Item                 @relation(fields: [itemId], references: [id])
   itemId      Int
   slotIndex   Int?
-  quantity    Int       @default(1)
-  isEquipped  Boolean   @default(false)
+  quantity    Int                  @default(1)
+  isEquipped  Boolean              @default(false)
   equipment   CharacterEquipment[]
 }
 
@@ -128,35 +213,35 @@ model SkillDiscipline {
 }
 
 model Skill {
-  id             Int       @id @default(autoincrement())
-  disciplineId   Int
-  discipline     SkillDiscipline @relation(fields: [disciplineId], references: [id])
-  slug           String    @unique
-  name           String
-  description    String
-  type           SkillType
-  rankMax        Int       @default(1)
-  resourceCost   Int?
+  id              Int              @id @default(autoincrement())
+  disciplineId    Int
+  discipline      SkillDiscipline  @relation(fields: [disciplineId], references: [id])
+  slug            String           @unique
+  name            String
+  description     String
+  type            SkillType
+  rankMax         Int              @default(1)
+  resourceCost    Int?
   cooldownSeconds Int?
-  requiredLevel  Int       @default(1)
-  unlockCost     Int       @default(0)
-  rankCost       Int       @default(0)
-  prerequisiteId Int?
-  prerequisite   Skill?    @relation("SkillDependency", fields: [prerequisiteId], references: [id])
-  childSkills    Skill[]   @relation("SkillDependency")
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  characterRanks CharacterSkill[]
+  requiredLevel   Int              @default(1)
+  unlockCost      Int              @default(0)
+  rankCost        Int              @default(0)
+  prerequisiteId  Int?
+  prerequisite    Skill?           @relation("SkillDependency", fields: [prerequisiteId], references: [id])
+  childSkills     Skill[]          @relation("SkillDependency")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  characterRanks  CharacterSkill[]
 }
 
 model CharacterSkill {
-  id          Int       @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   characterId Int
   skillId     Int
-  rank        Int       @default(0)
-  unlocked    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  rank        Int      @default(0)
+  unlocked    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   character Character @relation(fields: [characterId], references: [id])
   skill     Skill     @relation(fields: [skillId], references: [id])
@@ -165,86 +250,111 @@ model CharacterSkill {
 }
 
 model Region {
-  id          Int       @id @default(autoincrement())
-  slug        String    @unique
+  id          Int        @id @default(autoincrement())
+  slug        String     @unique
   name        String
   type        RegionType
   description String
   ambientTag  String?
   levelMin    Int?
   levelMax    Int?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
-  features              RegionFeature[]
-  featureTargets        RegionFeature[] @relation("FeatureTarget")
-  npcs                  Npc[]
-  connectionsFrom       RegionConnection[] @relation("RegionFrom")
-  connectionsTo         RegionConnection[] @relation("RegionTo")
+  features        RegionFeature[]
+  featureTargets  RegionFeature[]    @relation("FeatureTarget")
+  npcs            Npc[]
+  connectionsFrom RegionConnection[] @relation("RegionFrom")
+  connectionsTo   RegionConnection[] @relation("RegionTo")
 }
 
 model RegionConnection {
-  id            Int     @id @default(autoincrement())
-  fromRegionId  Int
-  toRegionId    Int
-  description   String
-  travelTime    Int?
-  requirement   String?
-  fromRegion    Region  @relation("RegionFrom", fields: [fromRegionId], references: [id])
-  toRegion      Region  @relation("RegionTo", fields: [toRegionId], references: [id])
+  id           Int     @id @default(autoincrement())
+  fromRegionId Int
+  toRegionId   Int
+  description  String
+  travelTime   Int?
+  requirement  String?
+  fromRegion   Region  @relation("RegionFrom", fields: [fromRegionId], references: [id])
+  toRegion     Region  @relation("RegionTo", fields: [toRegionId], references: [id])
 
   @@unique([fromRegionId, toRegionId])
 }
 
 model Npc {
-  id          Int       @id @default(autoincrement())
-  slug        String    @unique
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique
   name        String
   title       String?
   role        String
   type        NpcType
   description String
   regionId    Int
-  region      Region    @relation(fields: [regionId], references: [id])
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  region      Region   @relation(fields: [regionId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   features     RegionFeature[]
   shopListings ShopListing[]
 }
 
 model RegionFeature {
-  id             Int       @id @default(autoincrement())
+  id             Int               @id @default(autoincrement())
   regionId       Int
-  region         Region    @relation(fields: [regionId], references: [id])
+  region         Region            @relation(fields: [regionId], references: [id])
   slug           String
   name           String
   type           RegionFeatureType
   description    String
   icon           String?
   npcId          Int?
-  npc            Npc?      @relation(fields: [npcId], references: [id])
+  npc            Npc?              @relation(fields: [npcId], references: [id])
   targetRegionId Int?
-  targetRegion   Region?   @relation("FeatureTarget", fields: [targetRegionId], references: [id])
+  targetRegion   Region?           @relation("FeatureTarget", fields: [targetRegionId], references: [id])
   posX           Float?
   posY           Float?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   @@unique([regionId, slug])
 }
 
+model GameSetting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       Json
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model ShopListing {
-  id       Int  @id @default(autoincrement())
+  id       Int    @id @default(autoincrement())
   npcId    Int
-  npc      Npc  @relation(fields: [npcId], references: [id])
+  npc      Npc    @relation(fields: [npcId], references: [id])
   itemId   Int
-  item     Item @relation(fields: [itemId], references: [id])
+  item     Item   @relation(fields: [itemId], references: [id])
   price    Int
   currency String @default("gold")
   stock    Int?
 
   @@unique([npcId, itemId])
+}
+
+enum ItemRace {
+  CH
+  EU
+  GLOBAL
+}
+
+enum ItemGender {
+  MALE
+  FEMALE
+  ANY
+}
+
+enum ItemUpgradeModel {
+  TABLE
 }
 
 enum ItemType {

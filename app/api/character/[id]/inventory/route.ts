@@ -151,13 +151,13 @@ async function buildInventoryPayload(characterId: number, gold: number) {
   const [items, equipment] = await Promise.all([
     prisma.inventoryItem.findMany({
       where: { characterId, isEquipped: false },
-      include: { item: true },
+      include: { item: { include: { statsProfile: true } } },
     }),
     prisma.characterEquipment.findMany({
       where: { characterId },
       include: {
         inventoryItem: {
-          include: { item: true },
+          include: { item: { include: { statsProfile: true } } },
         },
       },
     }),
@@ -178,6 +178,26 @@ async function buildInventoryPayload(characterId: number, gold: number) {
         type: entry.item.type,
         equipmentSlot: entry.item.equipmentSlot,
         handsRequired: entry.item.handsRequired,
+        levelRequirement: entry.item.levelRequirement,
+        description: entry.item.description,
+        stats: entry.item.statsProfile
+          ? {
+              phyAtkMin: entry.item.statsProfile.phyAtkMin,
+              phyAtkMax: entry.item.statsProfile.phyAtkMax,
+              magAtkMin: entry.item.statsProfile.magAtkMin,
+              magAtkMax: entry.item.statsProfile.magAtkMax,
+              attackDistance: entry.item.statsProfile.attackDistance,
+              attackRate: entry.item.statsProfile.attackRate,
+              critical: entry.item.statsProfile.critical,
+              durability: entry.item.statsProfile.durability,
+              parryRatio: entry.item.statsProfile.parryRatio,
+              blockRatio: entry.item.statsProfile.blockRatio,
+              phyReinforceMin: entry.item.statsProfile.phyReinforceMin,
+              phyReinforceMax: entry.item.statsProfile.phyReinforceMax,
+              magReinforceMin: entry.item.statsProfile.magReinforceMin,
+              magReinforceMax: entry.item.statsProfile.magReinforceMax,
+            }
+          : null,
       },
     }));
 
@@ -206,6 +226,26 @@ async function buildInventoryPayload(characterId: number, gold: number) {
         type: inventoryItem.item.type,
         equipmentSlot: inventoryItem.item.equipmentSlot,
         handsRequired: inventoryItem.item.handsRequired,
+        levelRequirement: inventoryItem.item.levelRequirement,
+        description: inventoryItem.item.description,
+        stats: inventoryItem.item.statsProfile
+          ? {
+              phyAtkMin: inventoryItem.item.statsProfile.phyAtkMin,
+              phyAtkMax: inventoryItem.item.statsProfile.phyAtkMax,
+              magAtkMin: inventoryItem.item.statsProfile.magAtkMin,
+              magAtkMax: inventoryItem.item.statsProfile.magAtkMax,
+              attackDistance: inventoryItem.item.statsProfile.attackDistance,
+              attackRate: inventoryItem.item.statsProfile.attackRate,
+              critical: inventoryItem.item.statsProfile.critical,
+              durability: inventoryItem.item.statsProfile.durability,
+              parryRatio: inventoryItem.item.statsProfile.parryRatio,
+              blockRatio: inventoryItem.item.statsProfile.blockRatio,
+              phyReinforceMin: inventoryItem.item.statsProfile.phyReinforceMin,
+              phyReinforceMax: inventoryItem.item.statsProfile.phyReinforceMax,
+              magReinforceMin: inventoryItem.item.statsProfile.magReinforceMin,
+              magReinforceMax: inventoryItem.item.statsProfile.magReinforceMax,
+            }
+          : null,
       },
     };
   });
@@ -370,4 +410,3 @@ async function getNextSlotIndex(
 
   return null;
 }
-
