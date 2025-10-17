@@ -142,20 +142,20 @@ function resolveIconPath(icon?: string | null) {
 }
 
 const STAT_CONFIG: Array<{ key: keyof ItemStatsSummary; label: string }> = [
-  { key: "phyAtkMin", label: "Fiziksel Saldırı Min" },
-  { key: "phyAtkMax", label: "Fiziksel Saldırı Maks" },
-  { key: "magAtkMin", label: "Büyü Saldırı Min" },
-  { key: "magAtkMax", label: "Büyü Saldırı Maks" },
-  { key: "attackRate", label: "Saldırı Hızı" },
-  { key: "attackDistance", label: "Saldırı Menzili" },
+  { key: "phyAtkMin", label: "Fiziksel SaldÄ±rÄ± Min" },
+  { key: "phyAtkMax", label: "Fiziksel SaldÄ±rÄ± Maks" },
+  { key: "magAtkMin", label: "BÃ¼yÃ¼ SaldÄ±rÄ± Min" },
+  { key: "magAtkMax", label: "BÃ¼yÃ¼ SaldÄ±rÄ± Maks" },
+  { key: "attackRate", label: "SaldÄ±rÄ± HÄ±zÄ±" },
+  { key: "attackDistance", label: "SaldÄ±rÄ± Menzili" },
   { key: "critical", label: "Kritik" },
-  { key: "parryRatio", label: "Savunma Oranı" },
-  { key: "blockRatio", label: "Blok Oranı" },
-  { key: "durability", label: "Dayanıklılık" },
+  { key: "parryRatio", label: "Savunma OranÄ±" },
+  { key: "blockRatio", label: "Blok OranÄ±" },
+  { key: "durability", label: "DayanÄ±klÄ±lÄ±k" },
   { key: "phyReinforceMin", label: "Fiziksel Takviye Min" },
   { key: "phyReinforceMax", label: "Fiziksel Takviye Maks" },
-  { key: "magReinforceMin", label: "Büyü Takviye Min" },
-  { key: "magReinforceMax", label: "Büyü Takviye Maks" },
+  { key: "magReinforceMin", label: "BÃ¼yÃ¼ Takviye Min" },
+  { key: "magReinforceMax", label: "BÃ¼yÃ¼ Takviye Maks" },
 ];
 
 function formatNumber(value: number | null | undefined) {
@@ -446,7 +446,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({
           {item.levelRequirement !== null && item.levelRequirement > 0 && (
             <li>Seviye: {item.levelRequirement}</li>
           )}
-          <li>Eller: {item.handsRequired > 1 ? "iki elli" : "tek elli"}</li>
+          <li>Eller: {item.handsRequired > 1 ? "Ä°ki elli" : "tek elli"}</li>
           {quantity !== undefined && <li>Adet: {quantity}</li>}
         </ul>
         {statEntries.length > 0 && (

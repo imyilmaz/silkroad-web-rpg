@@ -14,12 +14,12 @@
 
 .inventory-modal {
     position: relative;
-    width: min(980px, 95vw);
+    width: min(900px, 92vw);
     max-height: 90vh;
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 24px 28px 32px;
+    gap: 14px;
+    padding: 20px 24px 28px;
     background: linear-gradient(150deg, #201c2f 0%, #14101e 100%);
     border: 1px solid rgba(255, 222, 180, 0.22);
     border-radius: 22px;
@@ -100,7 +100,7 @@
 
 .inventory-modal__content {
     display: flex;
-    gap: 24px;
+    gap: 20px;
     overflow-y: auto;
     padding-right: 4px;
 

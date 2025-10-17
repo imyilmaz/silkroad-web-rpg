@@ -6,8 +6,6 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const ITEMS_JSON_PATH = path.join(__dirname, "..", "items_full_clean.json");
-const DEFAULT_ICON_PATH = "assets/no-image.svg";
-
 const SLOT_TOKEN_MAP = {
   HA: "HEAD",
   CA: "HEAD",
@@ -19,10 +17,10 @@ const SLOT_TOKEN_MAP = {
 };
 
 const ACCESSORY_KEYWORDS = [
-  { keyword: "RING", slot: "RING_1" },
   { keyword: "EARRING", slot: "EARRING" },
   { keyword: "NECKLACE", slot: "NECK" },
   { keyword: "AMULET", slot: "NECK" },
+  { keyword: "RING", slot: "RING_1" },
 ];
 
 const TWO_HANDED_WEAPON_TYPES = new Set([
@@ -30,6 +28,21 @@ const TWO_HANDED_WEAPON_TYPES = new Set([
   "weapon/spear",
   "weapon/staff",
 ]);
+
+const ICON_EXTENSIONS = new Set([".png", ".webp", ".jpg", ".jpeg", ".svg"]);
+
+function sanitizeIconPath(rawIcon) {
+  if (!rawIcon || typeof rawIcon !== "string") return null;
+  const trimmed = rawIcon.trim();
+  if (!trimmed) return null;
+  const lower = trimmed.toLowerCase();
+  for (const ext of ICON_EXTENSIONS) {
+    if (lower.endsWith(ext)) {
+      return trimmed;
+    }
+  }
+  return null;
+}
 
 function mapItemType(item) {
   const metaType = item?.meta?.type;
@@ -145,6 +158,7 @@ function collectJsonItem(item, aggregated) {
     normalizeInt(item.magicOptions?.limit);
   const equipmentSlot = deriveEquipmentSlot(item);
   const handsRequired = deriveHandsRequired(item, equipmentSlot);
+  const icon = sanitizeIconPath(item.visual?.icon);
 
   aggregated.baseItems.push({
     slug,
@@ -154,7 +168,7 @@ function collectJsonItem(item, aggregated) {
     name: primaryName,
     type: mapItemType(item),
     rarity: meta.rarity ?? null,
-    icon: item.visual?.icon ?? DEFAULT_ICON_PATH,
+    icon,
     modelPath: item.visual?.model ?? null,
     levelRequirement: normalizeInt(required.charLevel),
     description: primaryDesc,
@@ -268,6 +282,7 @@ function collectCustomItem(item, aggregated) {
   const derivedSlot = item.equipmentSlot ?? deriveEquipmentSlot(item);
   const handsRequired =
     item.handsRequired ?? deriveHandsRequired(item, derivedSlot);
+  const icon = sanitizeIconPath(item.icon);
   aggregated.baseItems.push({
     slug,
     codeName: item.codeName ?? slug.toUpperCase(),
@@ -276,7 +291,7 @@ function collectCustomItem(item, aggregated) {
     name,
     type: item.type ?? "ETC",
     rarity: item.rarity ?? null,
-    icon: item.icon ?? DEFAULT_ICON_PATH,
+    icon,
     modelPath: item.modelPath ?? null,
     levelRequirement: normalizeInt(item.levelRequirement),
     description: item.description ?? null,
@@ -397,118 +412,72 @@ function hasAnyStatValue(record) {
     ([key, value]) => key !== "slug" && value !== null,
   );
 }
-
 const itemsData = [
-  {
-    key: "sun-threaded-tachi",
-    name: "Sun-Threaded Tachi",
-    type: "WEAPON",
-    rarity: "rare",
-    icon: "weapons/sun-threaded-tachi.png",
-    levelRequirement: 1,
-    description: "A curved blade braided with dawnlight filaments.",
-    equipmentSlot: "WEAPON_MAIN",
-    handsRequired: 2,
-  },
-  {
-    key: "lunaquill-focus",
-    name: "Lunaquill Focus",
-    type: "WEAPON",
-    rarity: "uncommon",
-    icon: "focus/lunaquill-focus.png",
-    levelRequirement: 1,
-    description: "Crystalline quill that pours moonlit ink into the air.",
-    equipmentSlot: "WEAPON_MAIN",
-    handsRequired: 1,
-  },
-  {
-    key: "stormbound-glaive",
-    name: "Stormbound Glaive",
-    type: "WEAPON",
-    rarity: "rare",
-    icon: "polearm/stormbound-glaive.png",
-    levelRequirement: 1,
-    description: "Twin-pronged spear wrapped in captive squalls.",
-    equipmentSlot: "WEAPON_MAIN",
-    handsRequired: 2,
-  },
-  {
-    key: "curdled-helm",
-    name: "Curdled Helm",
-    type: "HEAD",
-    rarity: "common",
-    icon: "armor/curdled-helm.png",
-    levelRequirement: 1,
-    description: "Polished whey-steel helm lined with goat wool.",
-    equipmentSlot: "HEAD",
-  },
-  {
-    key: "creamguard-vest",
-    name: "Creamguard Vest",
-    type: "BODY",
-    rarity: "common",
-    icon: "armor/creamguard-vest.png",
-    levelRequirement: 1,
-    description: "Layered hide armor treated with thick cream resin.",
-    equipmentSlot: "CHEST",
-  },
-  {
-    key: "wheyglass-amulet",
-    name: "Wheyglass Amulet",
-    type: "ACCESSORY",
-    rarity: "uncommon",
-    icon: "accessories/wheyglass-amulet.png",
-    levelRequirement: 1,
-    description: "Prismatic charm that echoes tides from a single droplet.",
-    equipmentSlot: "NECK",
-  },
   {
     key: "pasture-tonic",
     name: "Pasture Tonic",
     type: "CONSUMABLE",
     rarity: "common",
-    icon: "consumables/pasture-tonic.png",
     levelRequirement: 1,
     description: "Hearty blend of grassmilk and herbs that restores vigor.",
   },
 ];
 
+const starterEquipmentItems = [
+  { itemKey: "ITEM_EU_SWORD_03_B", quantity: 1 },
+  { itemKey: "ITEM_EU_SHIELD_03_B", quantity: 1 },
+  { itemKey: "ITEM_EU_M_LIGHT_03_HA_B", quantity: 1 },
+  { itemKey: "ITEM_EU_M_LIGHT_03_SA_B", quantity: 1 },
+  { itemKey: "ITEM_EU_M_LIGHT_03_BA_B", quantity: 1 },
+  { itemKey: "ITEM_EU_M_LIGHT_03_LA_B", quantity: 1 },
+  { itemKey: "ITEM_EU_M_LIGHT_03_AA_B", quantity: 1 },
+  { itemKey: "ITEM_EU_M_LIGHT_03_FA_B", quantity: 1 },
+  { itemKey: "ITEM_EU_EARRING_10_A_RARE", quantity: 1 },
+  { itemKey: "ITEM_EU_NECKLACE_10_A_RARE", quantity: 1 },
+  { itemKey: "ITEM_CH_RING_01_A_RARE", quantity: 1 },
+  { itemKey: "ITEM_CH_RING_01_B_RARE", quantity: 1 },
+];
+
+function buildStartingItems(extra = []) {
+  return [
+    ...starterEquipmentItems.map((entry) => ({ ...entry })),
+    ...extra.map((entry) => ({ ...entry })),
+  ];
+}
+
 const originsData = [
   {
     slug: "sunweaver-nomad",
     name: "Gün Dokuyucusu Göçebe",
-    description: "Arnavut güneş çöllerinde süt ışığını eğip bükerek yol açan usta gezginler.",
+    description:
+      "Arnavut güneş çöllerinde süt ışığını eğip bükerek yol açan usta gezginler.",
     focus: "haste and melee weaving",
     affinity: "solar",
-    startingItems: [
-      { itemKey: "sun-threaded-tachi", quantity: 1, slotIndex: 0 },
-      { itemKey: "creamguard-vest", quantity: 1, slotIndex: 8 },
-      { itemKey: "pasture-tonic", quantity: 3 },
-    ],
+    startingItems: buildStartingItems([
+      { itemKey: "pasture-tonic", quantity: 3, slotIndex: 0 },
+    ]),
   },
   {
     slug: "moondrift-oracle",
     name: "Ay Süzülü Kahini",
-    description: "Karanlık göllerden topladıkları süt yansımalarıyla büyü tezgâhlayan biliciler.",
+    description:
+      "Karanlık göllerden topladıkları süt yansımalarıyla büyü tezgâhlayan biliciler.",
     focus: "supportive rituals",
     affinity: "lunar",
-    startingItems: [
-      { itemKey: "lunaquill-focus", quantity: 1, slotIndex: 0 },
-      { itemKey: "wheyglass-amulet", quantity: 1, slotIndex: 9 },
-      { itemKey: "pasture-tonic", quantity: 3 },
-    ],
+    startingItems: buildStartingItems([
+      { itemKey: "pasture-tonic", quantity: 3, slotIndex: 0 },
+    ]),
   },
   {
     slug: "stormborne-guard",
     name: "Fırtınadoğan Muhafız",
-    description: "Süt fırtınalarının ortasında gemileri koruyan, ağır zırhlı süt şövalyeleri.",
+    description:
+      "Süt fırtınalarının ortasında gemileri koruyan, ağır zırhlı süt şövalyeleri.",
     focus: "area control",
     affinity: "tempest",
-    startingItems: [
-      { itemKey: "stormbound-glaive", quantity: 1, slotIndex: 0 },
-      { itemKey: "curdled-helm", quantity: 1, slotIndex: 7 },
-      { itemKey: "pasture-tonic", quantity: 3 },
-    ],
+    startingItems: buildStartingItems([
+      { itemKey: "pasture-tonic", quantity: 3, slotIndex: 0 },
+    ]),
   },
 ];
 
@@ -1324,3 +1293,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
