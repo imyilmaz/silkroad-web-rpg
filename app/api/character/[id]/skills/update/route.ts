@@ -2,10 +2,44 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/auth";
 
+const DEFAULT_MASTERY_MULTIPLIER = 3;
+
+const resolveNumeric = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === "object" && value !== null) {
+    if ("multiplier" in value) {
+      const nested = (value as Record<string, unknown>).multiplier;
+      if (typeof nested === "number" && Number.isFinite(nested) && nested > 0) {
+        return nested;
+      }
+    }
+    if ("value" in value) {
+      const nested = (value as Record<string, unknown>).value;
+      if (typeof nested === "number" && Number.isFinite(nested) && nested > 0) {
+        return nested;
+      }
+    }
+  }
+  return null;
+};
+
+const getMasteryMultiplier = async (): Promise<number> => {
+  const setting = await prisma.gameSetting.findUnique({
+    where: { key: "skillMasteryMultiplier" },
+  });
+
+  const parsed = resolveNumeric(setting?.value);
+  return parsed ?? DEFAULT_MASTERY_MULTIPLIER;
+};
+
+type RouteParams = {
+  id: string;
+};
+
 type RouteContext = {
-  params: {
-    id: string;
-  };
+  params: RouteParams | Promise<RouteParams>;
 };
 
 type SkillActionRequest = {
@@ -16,7 +50,9 @@ type SkillActionRequest = {
 const errorResponse = (message: string, status = 400) =>
   NextResponse.json({ message }, { status });
 
-export async function POST(request: Request, { params }: RouteContext) {
+export async function POST(request: Request, context: RouteContext) {
+  const params = await Promise.resolve(context.params);
+
   const user = await getUserFromToken();
   if (!user) {
     return errorResponse("Yetkisiz erişim.", 401);
@@ -35,7 +71,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     return errorResponse("İşleme tabi tutulacak yetenek belirtilmedi.");
   }
 
-  if (!["unlock", "rank-up"].includes(action)) {
+  if (action !== "unlock" && action !== "rank-up") {
     return errorResponse("Geçersiz işlem türü.");
   }
 
@@ -44,7 +80,10 @@ export async function POST(request: Request, { params }: RouteContext) {
   });
 
   if (!character) {
-    return errorResponse("Karakter bulunamadı veya bu kullanıcıya ait değil.", 404);
+    return errorResponse(
+      "Karakter bulunamadı veya bu kullanıcıya ait değil.",
+      404,
+    );
   }
 
   const skill = await prisma.skill.findUnique({
@@ -60,13 +99,11 @@ export async function POST(request: Request, { params }: RouteContext) {
     return errorResponse("Belirtilen yetenek bulunamadı.", 404);
   }
 
-  const prerequisiteSlug = skill.prerequisite?.slug ?? null;
-
-  if (prerequisiteSlug) {
+  if (skill.prerequisite?.slug) {
     const prerequisiteState = await prisma.characterSkill.findFirst({
       where: {
         characterId,
-        skill: { slug: prerequisiteSlug },
+        skill: { slug: skill.prerequisite.slug },
       },
       select: {
         unlocked: true,
@@ -74,7 +111,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     });
 
     if (!prerequisiteState?.unlocked) {
-      return errorResponse("Ön koşul yetenek henüz açılmamış.");
+      return errorResponse("Ön koşul yetenek henüz açılmadı.");
     }
   }
 
@@ -93,8 +130,12 @@ export async function POST(request: Request, { params }: RouteContext) {
         rank: existingSkill.rank,
         unlocked: existingSkill.unlocked,
       },
-      characterGold: character.gold,
+      characterSkillPoints: character.skillPoints,
     });
+  }
+
+  if (character.level < skill.requiredLevel) {
+    return errorResponse("Karakter seviyeniz bu yetenek için yetersiz.");
   }
 
   if (action === "rank-up") {
@@ -109,21 +150,49 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const cost = action === "unlock" ? skill.unlockCost : skill.rankCost;
 
-  if (cost > character.gold) {
-    return errorResponse("Bu işlem için yeterli altınınız yok.");
+  if (cost > character.skillPoints) {
+    return errorResponse("Yeterli yetenek puanınız yok.");
   }
+
+  const masteryMultiplier = await getMasteryMultiplier();
+  const masteryLimit = character.level * masteryMultiplier;
 
   try {
     const transactionResult = await prisma.$transaction(async (tx) => {
+      const currentSkillRecord = await tx.characterSkill.findFirst({
+        where: { characterId, skillId: skill.id },
+      });
+
+      const totals = await tx.characterSkill.aggregate({
+        where: { characterId },
+        _sum: { rank: true },
+      });
+
+      const currentTotal = totals._sum.rank ?? 0;
+      const previousRank = currentSkillRecord?.rank ?? 0;
+      const nextRank =
+        action === "unlock"
+          ? currentSkillRecord
+            ? currentSkillRecord.rank > 0
+              ? currentSkillRecord.rank
+              : 1
+            : 1
+          : (currentSkillRecord?.rank ?? 0) + 1;
+
+      const nextTotal = currentTotal - previousRank + nextRank;
+      if (nextTotal > masteryLimit) {
+        throw new Error("MASTERY_CAP");
+      }
+
       let updatedSkillRecord;
 
       if (action === "unlock") {
-        if (existingSkill) {
+        if (currentSkillRecord) {
           updatedSkillRecord = await tx.characterSkill.update({
-            where: { id: existingSkill.id },
+            where: { id: currentSkillRecord.id },
             data: {
               unlocked: true,
-              rank: existingSkill.rank > 0 ? existingSkill.rank : 1,
+              rank: nextRank,
             },
           });
         } else {
@@ -132,41 +201,42 @@ export async function POST(request: Request, { params }: RouteContext) {
               characterId,
               skillId: skill.id,
               unlocked: true,
-              rank: 1,
+              rank: nextRank,
             },
           });
         }
       } else {
         updatedSkillRecord = await tx.characterSkill.update({
-          where: { id: existingSkill!.id },
+          where: { id: currentSkillRecord!.id },
           data: {
-            rank: existingSkill!.rank + 1,
+            rank: nextRank,
           },
         });
       }
 
-      let updatedGold = character.gold;
+      let updatedSkillPoints = character.skillPoints;
       if (cost > 0) {
-        const current = await tx.character.findUnique({
+        const wallet = await tx.character.findUnique({
           where: { id: characterId },
-          select: { gold: true },
+          select: { skillPoints: true },
         });
 
-        if (!current || current.gold < cost) {
-          throw new Error("INSUFFICIENT_GOLD");
+        if (!wallet || wallet.skillPoints < cost) {
+          throw new Error("INSUFFICIENT_SKILL_POINTS");
         }
 
         const updatedCharacter = await tx.character.update({
           where: { id: characterId },
-          data: { gold: { decrement: cost } },
-          select: { gold: true },
+          data: { skillPoints: { decrement: cost } },
+          select: { skillPoints: true },
         });
-        updatedGold = updatedCharacter.gold;
+        updatedSkillPoints = updatedCharacter.skillPoints;
       }
 
       return {
         updatedSkillRecord,
-        updatedGold,
+        updatedSkillPoints,
+        masteryTotal: nextTotal,
       };
     });
 
@@ -177,14 +247,22 @@ export async function POST(request: Request, { params }: RouteContext) {
         rank: transactionResult.updatedSkillRecord.rank,
         unlocked: transactionResult.updatedSkillRecord.unlocked,
       },
-      characterGold: transactionResult.updatedGold,
+      characterSkillPoints: transactionResult.updatedSkillPoints,
+      masteryTotal: transactionResult.masteryTotal,
+      masteryLimit,
     });
   } catch (transactionError) {
     if (
       transactionError instanceof Error &&
-      transactionError.message === "INSUFFICIENT_GOLD"
+      transactionError.message === "INSUFFICIENT_SKILL_POINTS"
     ) {
-      return errorResponse("Bu işlem için yeterli altınınız yok.", 400);
+      return errorResponse("Yeterli yetenek puanınız kalmadı.", 400);
+    }
+    if (
+      transactionError instanceof Error &&
+      transactionError.message === "MASTERY_CAP"
+    ) {
+      return errorResponse("Ustalık sınırına ulaştınız. Daha fazla seviye yükseltemezsiniz.", 400);
     }
     console.error("Skill update failed:", transactionError);
     return errorResponse("Yetenek işlemi sırasında bir hata oluştu.", 500);

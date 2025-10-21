@@ -1,25 +1,61 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+const DEFAULT_MASTERY_MULTIPLIER = 3;
+
+const resolveNumeric = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === "object" && value !== null) {
+    if ("multiplier" in value) {
+      const nested = (value as Record<string, unknown>).multiplier;
+      if (typeof nested === "number" && Number.isFinite(nested) && nested > 0) {
+        return nested;
+      }
+    }
+    if ("value" in value) {
+      const nested = (value as Record<string, unknown>).value;
+      if (typeof nested === "number" && Number.isFinite(nested) && nested > 0) {
+        return nested;
+      }
+    }
+  }
+  return null;
+};
+
+const getMasteryMultiplier = async (): Promise<number> => {
+  const setting = await prisma.gameSetting.findUnique({
+    where: { key: "skillMasteryMultiplier" },
+  });
+
+  const parsed = resolveNumeric(setting?.value);
+  return parsed ?? DEFAULT_MASTERY_MULTIPLIER;
+};
+
 export async function GET() {
   try {
-    const disciplines = await prisma.skillDiscipline.findMany({
-      orderBy: { id: "asc" },
-      include: {
-        skills: {
-          orderBy: { requiredLevel: "asc" },
-          include: {
-            prerequisite: {
-              select: {
-                slug: true,
+    const [disciplines, masteryMultiplier] = await Promise.all([
+      prisma.skillDiscipline.findMany({
+        orderBy: { id: "asc" },
+        include: {
+          skills: {
+            orderBy: { requiredLevel: "asc" },
+            include: {
+              prerequisite: {
+                select: {
+                  slug: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      }),
+      getMasteryMultiplier(),
+    ]);
 
     return NextResponse.json({
+      masteryMultiplier,
       disciplines: disciplines.map((discipline) => ({
         slug: discipline.slug,
         name: discipline.name,

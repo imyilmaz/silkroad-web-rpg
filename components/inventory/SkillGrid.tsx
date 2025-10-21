@@ -12,22 +12,34 @@ type SkillEntry = {
   rankMax: number;
   resourceCost: number | null;
   cooldownSeconds: number | null;
+  unlockCost: number;
+  rankCost: number;
   rank: number;
   unlocked: boolean;
   isLocked: boolean;
 };
 
+type SkillUpdatePayload = {
+  skillPoints?: number;
+  masteryTotal?: number;
+  masteryLimit?: number;
+};
+
 type Props = {
   skills: SkillEntry[];
   characterId?: string | number;
-  availableGold?: number;
-  onSkillUpdated?: (updatedGold?: number) => void;
+  availableSkillPoints?: number;
+  masteryTotal?: number;
+  masteryLimit?: number;
+  onSkillUpdated?: (payload?: SkillUpdatePayload) => void;
 };
 
 export default function SkillGrid({
   skills,
   characterId,
-  availableGold,
+  availableSkillPoints,
+  masteryTotal,
+  masteryLimit,
   onSkillUpdated,
 }: Props) {
   const [pendingSkill, setPendingSkill] = useState<string | null>(null);
@@ -38,15 +50,17 @@ export default function SkillGrid({
     action: "unlock" | "rank-up",
   ) => {
     if (!characterId) return;
+
     const cost = action === "unlock" ? skill.unlockCost : skill.rankCost;
     if (
-      availableGold !== undefined &&
-      availableGold !== null &&
-      cost > availableGold
+      availableSkillPoints !== undefined &&
+      availableSkillPoints !== null &&
+      cost > availableSkillPoints
     ) {
-      toast.error("Bu işlem için yeterli altınınız yok.");
+      toast.error("Bu islem icin yeterli yetenek puaniniz yok.");
       return;
     }
+
     setPendingSkill(skill.slug);
     try {
       const response = await fetch(
@@ -66,25 +80,41 @@ export default function SkillGrid({
         const message =
           typeof data.message === "string"
             ? data.message
-            : "Yetenek güncellemesi başarısız oldu.";
+            : "Yetenek guncellemesi basarisiz oldu.";
         toast.error(message);
       } else {
         const data = await response.json().catch(() => ({}));
         toast.success(
           data.message ??
             (action === "unlock"
-              ? `${skill.name} açıldı!`
-              : `${skill.name} seviyesi arttı!`),
+              ? `${skill.name} ogrenildi!`
+              : `${skill.name} seviyesi artti!`),
         );
-        onSkillUpdated?.(typeof data.characterGold === "number" ? data.characterGold : undefined);
+        onSkillUpdated?.({
+          skillPoints:
+            typeof data.characterSkillPoints === "number"
+              ? data.characterSkillPoints
+              : undefined,
+          masteryTotal:
+            typeof data.masteryTotal === "number"
+              ? data.masteryTotal
+              : undefined,
+          masteryLimit:
+            typeof data.masteryLimit === "number"
+              ? data.masteryLimit
+              : undefined,
+        });
       }
     } catch (error) {
       console.error("Skill update error:", error);
-      toast.error("Yetenek güncellemesi sırasında hata oluştu.");
+      toast.error("Yetenek guncellemesi sirasinda hata olustu.");
     } finally {
       setPendingSkill(null);
     }
   };
+
+  const limit = masteryLimit ?? Infinity;
+  const total = masteryTotal ?? 0;
 
   return (
     <div className="skill-grid">
@@ -99,21 +129,33 @@ export default function SkillGrid({
         }
 
         const unlockAffordable =
-          availableGold === undefined ||
-          availableGold === null ||
-          skill.unlockCost <= availableGold;
+          availableSkillPoints === undefined ||
+          availableSkillPoints === null ||
+          skill.unlockCost <= availableSkillPoints;
         const rankAffordable =
-          availableGold === undefined ||
-          availableGold === null ||
-          skill.rankCost <= availableGold;
+          availableSkillPoints === undefined ||
+          availableSkillPoints === null ||
+          skill.rankCost <= availableSkillPoints;
+
+        const projectedUnlockTotal =
+          total - skill.rank + (skill.rank > 0 ? skill.rank : 1);
+        const projectedRankTotal = total - skill.rank + (skill.rank + 1);
+
+        const unlockWithinLimit = projectedUnlockTotal <= limit;
+        const rankWithinLimit = projectedRankTotal <= limit;
 
         const canUnlock =
-          hasCharacter && !skill.unlocked && !skill.isLocked && unlockAffordable;
+          hasCharacter &&
+          !skill.unlocked &&
+          !skill.isLocked &&
+          unlockAffordable &&
+          unlockWithinLimit;
         const canRankUp =
           hasCharacter &&
           skill.unlocked &&
           skill.rank < skill.rankMax &&
-          rankAffordable;
+          rankAffordable &&
+          rankWithinLimit;
 
         return (
           <div
@@ -129,16 +171,16 @@ export default function SkillGrid({
             <div className="skill-meta">
               <span>{skill.type}</span>
               {skill.resourceCost !== null && (
-                <span>Maliyet: {skill.resourceCost}</span>
+                <span>Kaynak: {skill.resourceCost}</span>
               )}
               {skill.cooldownSeconds !== null && (
                 <span>Bekleme: {skill.cooldownSeconds}s</span>
               )}
               {skill.unlockCost > 0 && (
-                <span>Kilit açma: {skill.unlockCost} altın</span>
+                <span>Acma maliyeti: {skill.unlockCost} puan</span>
               )}
               {skill.rankCost > 0 && (
-                <span>Seviye artışı: {skill.rankCost} altın</span>
+                <span>Seviye artisi: {skill.rankCost} puan</span>
               )}
             </div>
             {hasCharacter && (
@@ -148,7 +190,7 @@ export default function SkillGrid({
                     disabled={pendingSkill === skill.slug}
                     onClick={() => handleAction(skill, "unlock")}
                   >
-                    Kilidi Aç
+                    Ogren
                   </button>
                 )}
                 {canRankUp && (
@@ -156,15 +198,34 @@ export default function SkillGrid({
                     disabled={pendingSkill === skill.slug}
                     onClick={() => handleAction(skill, "rank-up")}
                   >
-                    Seviye Artır
+                    Seviye Arttir
                   </button>
                 )}
-                {!canUnlock && !skill.unlocked && !skill.isLocked && !unlockAffordable && (
-                  <span className="skill-warning">Altın yetersiz</span>
-                )}
-                {skill.unlocked && skill.rank < skill.rankMax && !canRankUp && !rankAffordable && (
-                  <span className="skill-warning">Altın yetersiz</span>
-                )}
+                {!canUnlock &&
+                  !skill.unlocked &&
+                  !skill.isLocked &&
+                  !unlockAffordable && (
+                    <span className="skill-warning">Puan yetersiz</span>
+                  )}
+                {!canUnlock &&
+                  !skill.unlocked &&
+                  !skill.isLocked &&
+                  unlockAffordable &&
+                  !unlockWithinLimit && (
+                    <span className="skill-warning">Ustalik siniri dolu</span>
+                  )}
+                {skill.unlocked &&
+                  skill.rank < skill.rankMax &&
+                  !canRankUp &&
+                  !rankAffordable && (
+                    <span className="skill-warning">Puan yetersiz</span>
+                  )}
+                {skill.unlocked &&
+                  skill.rank < skill.rankMax &&
+                  rankAffordable &&
+                  !rankWithinLimit && (
+                    <span className="skill-warning">Ustalik siniri dolu</span>
+                  )}
               </div>
             )}
           </div>

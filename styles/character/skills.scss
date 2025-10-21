@@ -254,3 +254,85 @@
   padding: 8px;
   background-color: #0b0b0b;
 }
+
+.skill-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgba(8, 8, 12, 0.72);
+  backdrop-filter: blur(4px);
+  z-index: 1400;
+}
+
+.skill-modal__scrim {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.skill-modal__content {
+  position: relative;
+  width: min(900px, 95vw);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 16px;
+  background: linear-gradient(185deg, rgba(22, 18, 30, 0.95), rgba(12, 10, 18, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 22px 38px rgba(11, 8, 20, 0.55);
+  color: #f4f0ff;
+}
+
+.skill-modal__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 12px;
+}
+
+.skill-modal__title h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.skill-modal__title span {
+  display: block;
+  font-size: 0.85rem;
+  color: rgba(244, 240, 255, 0.75);
+  margin-top: 4px;
+}
+
+.skill-modal__resources {
+  margin-left: auto;
+  font-size: 0.85rem;
+
+  strong {
+    color: #ffd76f;
+  }
+}
+
+.skill-modal__close {
+  border: none;
+  background: transparent;
+  color: rgba(244, 240, 255, 0.75);
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.skill-modal__body {
+  overflow-y: auto;
+  padding-right: 6px;
+
+  .skill-panel {
+    margin: 0 auto;
+  }
+}

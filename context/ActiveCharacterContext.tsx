@@ -13,6 +13,7 @@ type ActiveCharacter = {
   id: number;
   name: string;
   gold: number | null;
+  skillPoints: number | null;
   level?: number;
   race?: string;
 };
@@ -22,6 +23,7 @@ type ActiveCharacterContextValue = {
   loading: boolean;
   refresh: () => Promise<void>;
   updateGold: (gold: number) => void;
+  updateSkillPoints: (skillPoints: number) => void;
 };
 
 const ActiveCharacterContext = createContext<
@@ -52,6 +54,7 @@ export const ActiveCharacterProvider = ({
           level: payload.character.level,
           race: payload.character.race,
           gold: payload.character.gold ?? null,
+          skillPoints: payload.character.skillPoints ?? null,
         });
       } else {
         setCharacter(null);
@@ -68,16 +71,23 @@ export const ActiveCharacterProvider = ({
     fetchSession();
   }, [fetchSession]);
 
+  const updateGold = useCallback((gold: number) => {
+    setCharacter((prev) => (prev ? { ...prev, gold } : prev));
+  }, []);
+
+  const updateSkillPoints = useCallback((skillPoints: number) => {
+    setCharacter((prev) => (prev ? { ...prev, skillPoints } : prev));
+  }, []);
+
   const value = useMemo<ActiveCharacterContextValue>(
     () => ({
       character,
       loading,
       refresh: fetchSession,
-      updateGold: (gold: number) => {
-        setCharacter((prev) => (prev ? { ...prev, gold } : prev));
-      },
+      updateGold,
+      updateSkillPoints,
     }),
-    [character, loading, fetchSession],
+    [character, loading, fetchSession, updateGold, updateSkillPoints],
   );
 
   return (

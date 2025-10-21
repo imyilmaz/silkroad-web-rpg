@@ -213,6 +213,18 @@
     color: rgba(229, 222, 255, 0.7);
 }
 
+.region-panel--npcs {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.region-vendor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+}
+
 .region-vendor-card {
     background: rgba(16, 13, 24, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.04);

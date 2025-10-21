@@ -1,34 +1,52 @@
-'use client'
+'use client';
 
 type Props = {
-  skillPoints: number;
-  masteryLevel: number;
-  masteryLimit: number;
-  gold?: number;
+  skillPoints?: number;
+  masteryTotal?: number;
+  masteryLimit?: number;
+  masteryMultiplier?: number;
+  learnedCount?: number;
 };
 
 export default function SkillFooter({
   skillPoints,
-  masteryLevel,
+  masteryTotal,
   masteryLimit,
-  gold,
+  masteryMultiplier,
+  learnedCount,
 }: Props) {
+  const formattedSkillPoints =
+    typeof skillPoints === "number"
+      ? skillPoints.toLocaleString("tr-TR")
+      : "-";
+
+  const formattedMastery =
+    masteryTotal !== undefined && masteryLimit !== undefined
+      ? `${(masteryTotal ?? 0).toLocaleString("tr-TR")} / ${
+          masteryLimit ?? 0
+        }`
+      : "-";
+
   return (
     <div className="skill-footer">
       <div className="footer-row">
-        <span>Skill point:</span>
-        <span>{skillPoints.toLocaleString()}</span>
+        <span>Kalan yetenek puani:</span>
+        <span>{formattedSkillPoints}</span>
       </div>
       <div className="footer-row">
-        <span>Mastery level total:</span>
-        <span>
-          {masteryLevel} / {masteryLimit}
-        </span>
+        <span>Toplam ustalik:</span>
+        <span>{formattedMastery}</span>
       </div>
-      {typeof gold === "number" && (
+      {typeof masteryMultiplier === "number" && (
         <div className="footer-row">
-          <span>Kalan altın:</span>
-          <span>{gold.toLocaleString()}</span>
+          <span>Limit carpani:</span>
+          <span>x{masteryMultiplier}</span>
+        </div>
+      )}
+      {typeof learnedCount === "number" && (
+        <div className="footer-row">
+          <span>Aktif sekmede ogrenilen:</span>
+          <span>{learnedCount.toLocaleString("tr-TR")}</span>
         </div>
       )}
     </div>

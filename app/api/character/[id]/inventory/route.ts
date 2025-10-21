@@ -109,6 +109,16 @@ export async function POST(request: Request, context: RouteParams) {
   } catch (error) {
     console.error("Inventory manage error:", error);
     if (error instanceof Error) {
+      if (error.message.startsWith("LEVEL_REQUIREMENT")) {
+        const [, levelText] = error.message.split(":");
+        const requiredLevel = levelText ? Number(levelText) : null;
+        return errorResponse(
+          requiredLevel
+            ? `Bu eşyayı kullanmak için seviye ${requiredLevel} gerekiyor.`
+            : "Bu eşyayı kullanmak için seviyeniz yetersiz.",
+          400,
+        );
+      }
       return errorResponse(error.message);
     }
     return errorResponse("İşlem gerçekleştirilemedi.");
@@ -172,6 +182,7 @@ async function buildInventoryPayload(characterId: number, gold: number) {
       quantity: entry.quantity,
       item: {
         id: entry.item.id,
+        slug: entry.item.slug,
         name: entry.item.name,
         icon: entry.item.icon,
         rarity: entry.item.rarity,
@@ -179,6 +190,10 @@ async function buildInventoryPayload(characterId: number, gold: number) {
         equipmentSlot: entry.item.equipmentSlot,
         handsRequired: entry.item.handsRequired,
         levelRequirement: entry.item.levelRequirement,
+        degree: entry.item.degree,
+        magicOptionLimit: entry.item.magicOptionLimit,
+        upgradeLevel: 0,
+        magicOptions: [] as Array<{ key: string; label: string; value: string }>,
         description: entry.item.description,
         stats: entry.item.statsProfile
           ? {
@@ -220,6 +235,7 @@ async function buildInventoryPayload(characterId: number, gold: number) {
       inventoryItemId: inventoryItem.id,
       item: {
         id: inventoryItem.item.id,
+        slug: inventoryItem.item.slug,
         name: inventoryItem.item.name,
         icon: inventoryItem.item.icon,
         rarity: inventoryItem.item.rarity,
@@ -227,6 +243,10 @@ async function buildInventoryPayload(characterId: number, gold: number) {
         equipmentSlot: inventoryItem.item.equipmentSlot,
         handsRequired: inventoryItem.item.handsRequired,
         levelRequirement: inventoryItem.item.levelRequirement,
+        degree: inventoryItem.item.degree,
+        magicOptionLimit: inventoryItem.item.magicOptionLimit,
+        upgradeLevel: 0,
+        magicOptions: [] as Array<{ key: string; label: string; value: string }>,
         description: inventoryItem.item.description,
         stats: inventoryItem.item.statsProfile
           ? {
@@ -270,11 +290,25 @@ async function handleEquip(
     });
 
     if (!inventoryItem || !inventoryItem.item) {
-      throw new Error("Envanter ögesi bulunamadı.");
+      throw new Error("Envanter öğesi bulunamadı.");
+    }
+
+    const characterRecord = await tx.character.findUnique({
+      where: { id: characterId },
+      select: { level: true },
+    });
+
+    const requiredLevel = Math.max(
+      1,
+      inventoryItem.item.levelRequirement ?? 1,
+    );
+
+    if (characterRecord && requiredLevel > characterRecord.level) {
+      throw new Error(`LEVEL_REQUIREMENT:${requiredLevel}`);
     }
 
     if (inventoryItem.isEquipped) {
-      throw new Error("Bu öge zaten takılı.");
+      throw new Error("Bu öğe zaten takılı.");
     }
 
     const slot = targetSlot ?? inventoryItem.item.equipmentSlot;
@@ -335,7 +369,6 @@ async function handleEquip(
     }
   });
 }
-
 async function handleUnequip(characterId: number, slot: EquipmentSlot) {
   await prisma.$transaction(async (tx) => {
     const record = await tx.characterEquipment.findUnique({

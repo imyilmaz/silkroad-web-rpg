@@ -33,15 +33,26 @@ type DisciplineResponse = {
   skills: SkillResponse[];
 };
 
+type CharacterMasteryPayload = {
+  total: number;
+  limit: number;
+  multiplier: number;
+};
+
 type DisciplinesApiResponse = {
   disciplines: DisciplineResponse[];
   character?: {
-    gold: number;
+    gold?: number;
+    level?: number;
+    skillPoints?: number;
+    mastery?: CharacterMasteryPayload;
   };
+  masteryMultiplier?: number;
 };
 
 type SkillPanelProps = {
   characterId?: string | number;
+  onSkillPointsChange?: (nextSkillPoints: number) => void;
 };
 
 type ActiveSkill = {
@@ -60,7 +71,14 @@ type ActiveSkill = {
   isLocked: boolean;
 };
 
+type SkillUpdateState = {
+  skillPoints?: number;
+  masteryTotal?: number;
+  masteryLimit?: number;
+};
+
 const fallbackElementLabel = "Element Yok";
+const DEFAULT_MASTERY_MULTIPLIER = 3;
 
 const formatLabel = (input: string | null | undefined) => {
   if (!input) return fallbackElementLabel;
@@ -73,11 +91,23 @@ const formatLabel = (input: string | null | undefined) => {
 const elementKey = (value: string | null | undefined) =>
   value ?? fallbackElementLabel;
 
-export default function SkillPanel({ characterId }: SkillPanelProps) {
-  const { character: activeCharacter, updateGold, refresh } =
+export default function SkillPanel({
+  characterId,
+  onSkillPointsChange,
+}: SkillPanelProps) {
+  const { character: activeCharacter, updateSkillPoints, refresh } =
     useActiveCharacter();
+  const activeCharacterId = activeCharacter?.id;
   const [disciplines, setDisciplines] = useState<DisciplineResponse[]>([]);
-  const [characterGold, setCharacterGold] = useState<number | null>(null);
+  const [characterSkillPoints, setCharacterSkillPoints] = useState<number | null>(
+    null,
+  );
+  const [characterLevel, setCharacterLevel] = useState<number | null>(null);
+  const [masteryTotal, setMasteryTotal] = useState<number | null>(null);
+  const [masteryLimit, setMasteryLimit] = useState<number | null>(null);
+  const [masteryMultiplier, setMasteryMultiplier] = useState<number>(
+    DEFAULT_MASTERY_MULTIPLIER,
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeElement, setActiveElement] = useState<string>(fallbackElementLabel);
@@ -103,17 +133,63 @@ export default function SkillPanel({ characterId }: SkillPanelProps) {
         const received = payload.disciplines ?? [];
         setDisciplines(received);
 
-        if (typeof payload.character?.gold === "number") {
-          setCharacterGold(payload.character.gold);
-          if (
-            activeCharacter &&
-            characterId &&
-            Number(characterId) === activeCharacter.id
-          ) {
-            updateGold(payload.character.gold);
+        const payloadMultiplier =
+          typeof payload.character?.mastery?.multiplier === "number"
+            ? payload.character.mastery.multiplier
+            : typeof payload.masteryMultiplier === "number"
+              ? payload.masteryMultiplier
+              : DEFAULT_MASTERY_MULTIPLIER;
+        setMasteryMultiplier(payloadMultiplier);
+
+        if (payload.character) {
+          if (typeof payload.character.skillPoints === "number") {
+            setCharacterSkillPoints(payload.character.skillPoints);
+            if (
+              activeCharacterId &&
+              characterId &&
+              Number(characterId) === activeCharacterId
+            ) {
+              updateSkillPoints(payload.character.skillPoints);
+            }
+            onSkillPointsChange?.(payload.character.skillPoints);
+          } else if (!characterId) {
+            setCharacterSkillPoints(null);
           }
-        } else if (!characterId) {
-          setCharacterGold(null);
+
+          if (typeof payload.character.level === "number") {
+            setCharacterLevel(payload.character.level);
+          } else if (!characterId) {
+            setCharacterLevel(null);
+          }
+
+          const masteryPayload = payload.character.mastery ?? null;
+          if (masteryPayload) {
+            setMasteryTotal(masteryPayload.total ?? 0);
+            if (typeof masteryPayload.limit === "number") {
+              setMasteryLimit(masteryPayload.limit);
+            } else if (typeof payload.character.level === "number") {
+              setMasteryLimit(
+                payload.character.level *
+                  (masteryPayload.multiplier ?? payloadMultiplier),
+              );
+            } else {
+              setMasteryLimit(null);
+            }
+          } else {
+            setMasteryTotal(null);
+            if (typeof payload.character.level === "number") {
+              setMasteryLimit(payload.character.level * payloadMultiplier);
+            } else if (!characterId) {
+              setMasteryLimit(null);
+            }
+          }
+        } else {
+          if (!characterId) {
+            setCharacterSkillPoints(null);
+            setCharacterLevel(null);
+            setMasteryTotal(null);
+            setMasteryLimit(null);
+          }
         }
 
         setError(null);
@@ -137,7 +213,7 @@ export default function SkillPanel({ characterId }: SkillPanelProps) {
     return () => {
       isMounted = false;
     };
-  }, [characterId, refreshToken, activeCharacter, updateGold]);
+  }, [characterId, refreshToken, activeCharacterId, updateSkillPoints, onSkillPointsChange]);
 
   useEffect(() => {
     if (disciplines.length === 0) {
@@ -226,14 +302,26 @@ export default function SkillPanel({ characterId }: SkillPanelProps) {
     const discipline = list.find((item) => item.slug === activeDiscipline);
     if (!discipline) return [];
 
-    return discipline.skills.map((skill) => {
+    const skills: ActiveSkill[] = [];
+
+    discipline.skills.forEach((skill) => {
       const state = skill.characterState ?? { rank: 0, unlocked: false };
+      const meetsLevel =
+        characterLevel === null ||
+        characterLevel === undefined ||
+        characterLevel >= skill.requiredLevel ||
+        state.unlocked;
+
+      if (!meetsLevel && !state.unlocked) {
+        return;
+      }
+
       const prerequisiteUnlocked =
         !skill.prerequisiteSlug ||
         (globalStateMap.get(skill.prerequisiteSlug)?.unlocked ?? false);
-      const isLocked = !prerequisiteUnlocked;
+      const isLocked = !state.unlocked && !prerequisiteUnlocked;
 
-      return {
+      skills.push({
         slug: skill.slug,
         name: skill.name,
         description: skill.description,
@@ -247,38 +335,46 @@ export default function SkillPanel({ characterId }: SkillPanelProps) {
         rank: state.rank,
         unlocked: state.unlocked,
         isLocked,
-      };
+      });
     });
-  }, [groupedByElement, globalStateMap, activeElement, activeDiscipline]);
+
+    return skills;
+  }, [
+    groupedByElement,
+    globalStateMap,
+    activeElement,
+    activeDiscipline,
+    characterLevel,
+  ]);
 
   const learnedCount = useMemo(
     () => activeSkills.filter((skill) => skill.unlocked).length,
     [activeSkills],
   );
 
-  const totalRank = useMemo(
-    () => activeSkills.reduce((total, skill) => total + skill.rank, 0),
-    [activeSkills],
-  );
-
-  const totalRankLimit = useMemo(
-    () => activeSkills.reduce((total, skill) => total + skill.rankMax, 0),
-    [activeSkills],
-  );
-
-  const handleSkillUpdated = (updatedGold?: number) => {
+  const handleSkillUpdated = (update?: SkillUpdateState) => {
     if (
-      typeof updatedGold === "number" &&
+      update &&
+      typeof update.skillPoints === "number" &&
       characterId &&
       activeCharacter &&
       Number(characterId) === activeCharacter.id
     ) {
-      updateGold(updatedGold);
-      setCharacterGold(updatedGold);
-    } else if (updatedGold !== undefined) {
-      setCharacterGold(updatedGold);
-    } else if (characterId) {
-      refresh();
+      updateSkillPoints(update.skillPoints);
+      setCharacterSkillPoints(update.skillPoints);
+      onSkillPointsChange?.(update.skillPoints);
+    } else if (update && typeof update.skillPoints === "number") {
+      setCharacterSkillPoints(update.skillPoints);
+      onSkillPointsChange?.(update.skillPoints);
+    } else if (!update && characterId) {
+      void refresh();
+    }
+
+    if (update && typeof update.masteryTotal === "number") {
+      setMasteryTotal(update.masteryTotal);
+    }
+    if (update && typeof update.masteryLimit === "number") {
+      setMasteryLimit(update.masteryLimit);
     }
 
     setRefreshToken((value) => value + 1);
@@ -325,15 +421,18 @@ export default function SkillPanel({ characterId }: SkillPanelProps) {
       <SkillGrid
         skills={activeSkills}
         characterId={characterId}
-        availableGold={characterGold ?? undefined}
+        availableSkillPoints={characterSkillPoints ?? undefined}
+        masteryTotal={masteryTotal ?? undefined}
+        masteryLimit={masteryLimit ?? undefined}
         onSkillUpdated={handleSkillUpdated}
       />
 
       <SkillFooter
-        skillPoints={learnedCount}
-        masteryLevel={totalRank}
-        masteryLimit={totalRankLimit}
-        gold={characterGold ?? undefined}
+        skillPoints={characterSkillPoints ?? undefined}
+        masteryTotal={masteryTotal ?? undefined}
+        masteryLimit={masteryLimit ?? undefined}
+        masteryMultiplier={masteryMultiplier}
+        learnedCount={learnedCount}
       />
     </div>
   );

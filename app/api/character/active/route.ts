@@ -32,6 +32,7 @@ export async function GET() {
       race: session.character.race,
       exp: session.character.exp,
       gold: session.character.gold,
+      skillPoints: session.character.skillPoints,
     },
   })
 }

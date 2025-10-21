@@ -5,6 +5,7 @@ import Link from "next/link";
 import InventoryModal, {
   InventoryItemPayload,
 } from "@/components/inventory/InventoryModal";
+import SkillModal from "@/components/skills/SkillModal";
 
 type RegionBasics = {
   slug: string;
@@ -38,6 +39,29 @@ type RegionFeature = {
   } | null;
 };
 
+type ItemStatsSummary = {
+  phyAtkMin: number | null;
+  phyAtkMax: number | null;
+  magAtkMin: number | null;
+  magAtkMax: number | null;
+  attackDistance: number | null;
+  attackRate: number | null;
+  critical: number | null;
+  durability: number | null;
+  parryRatio: number | null;
+  blockRatio: number | null;
+  phyReinforceMin: number | null;
+  phyReinforceMax: number | null;
+  magReinforceMin: number | null;
+  magReinforceMax: number | null;
+};
+
+type MagicOptionSummary = {
+  key: string;
+  label: string;
+  value: string;
+};
+
 type ShopListing = {
   id: number;
   itemId: number;
@@ -45,11 +69,21 @@ type ShopListing = {
   currency: string;
   stock: number | null;
   item: {
+    id: number;
+    slug: string | null;
     name: string;
     type: string;
     rarity: string | null;
     icon: string | null;
     description: string | null;
+    equipmentSlot: string | null;
+    handsRequired: number;
+    levelRequirement: number | null;
+    degree: number | null;
+    magicOptionLimit: number | null;
+    upgradeLevel: number;
+    magicOptions: MagicOptionSummary[];
+    stats: ItemStatsSummary | null;
   };
 };
 
@@ -107,6 +141,7 @@ type ActiveCharacter =
         race: string;
         exp: number;
         gold: number;
+        skillPoints: number;
       };
     }
   | {
@@ -155,6 +190,7 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
     "standard",
   );
   const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0);
+  const [skillsOpen, setSkillsOpen] = useState(false);
 
   const [activeVendor, setActiveVendor] = useState<RegionNpc | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
@@ -258,6 +294,14 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
     setInventoryOpen(true);
   };
 
+  const handleOpenSkills = () => {
+    setSkillsOpen(true);
+  };
+
+  const handleCloseSkills = () => {
+    setSkillsOpen(false);
+  };
+
   const handleCloseInventory = () => {
     setInventoryOpen(false);
     if (inventoryMode === "vendor") {
@@ -281,6 +325,18 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
         return {
           ...prev,
           character: { ...prev.character, gold },
+        };
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleSkillPointsChange = useCallback((nextSkillPoints: number) => {
+    setCharacterData((prev) => {
+      if (prev && "character" in prev) {
+        return {
+          ...prev,
+          character: { ...prev.character, skillPoints: nextSkillPoints },
         };
       }
       return prev;
@@ -348,6 +404,17 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
     }
     if (listing.stock !== null && listing.stock <= 0) {
       showNotification("Ürün stokta kalmamış.");
+      return;
+    }
+
+    if (
+      character &&
+      listing.item.levelRequirement !== null &&
+      listing.item.levelRequirement > character.level
+    ) {
+      showNotification(
+        `Bu eşyayı satın almak için seviye ${listing.item.levelRequirement} gerekiyor.`,
+      );
       return;
     }
 
@@ -691,6 +758,7 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
           <div className="region-hud__stats">
             <span>Seviye {character.level}</span>
             <span>Altın {character.gold}</span>
+            <span>Yetenek Puanı {character.skillPoints ?? 0}</span>
           </div>
         </div>
 
@@ -712,6 +780,13 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
             onClick={() => handleOpenInventory("standard")}
           >
             Envanteri Aç
+          </button>
+          <button
+            type="button"
+            className="region-button"
+            onClick={handleOpenSkills}
+          >
+            Yetenekler
           </button>
           {activeVendor ? (
             <button
@@ -743,29 +818,31 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
             <span>Mağaza açmak için butona tıklayın.</span>
           </div>
 
-          {vendorNpcs.map((npc) => {
-            const isActive = activeVendor?.id === npc.id;
-            return (
-              <article key={npc.slug} className="region-vendor-card">
-                <header>
-                  <h4>{npc.name}</h4>
-                  {npc.title && <small>{npc.title}</small>}
-                </header>
-                <p>{npc.description}</p>
-                <div className="region-vendor-card__actions">
-                  <button
-                    type="button"
-                    className="region-button region-button--secondary"
-                    onClick={() =>
-                      isActive ? handleCloseVendor() : handleOpenVendor(npc)
-                    }
-                  >
-                    {isActive ? "Mağazayı Kapat" : "Mağazayı Aç"}
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+          <div className="region-vendor-grid">
+            {vendorNpcs.map((npc) => {
+              const isActive = activeVendor?.id === npc.id;
+              return (
+                <article key={npc.slug} className="region-vendor-card">
+                  <header>
+                    <h4>{npc.name}</h4>
+                    {npc.title && <small>{npc.title}</small>}
+                  </header>
+                  <p>{npc.description}</p>
+                  <div className="region-vendor-card__actions">
+                    <button
+                      type="button"
+                      className="region-button region-button--secondary"
+                      onClick={() =>
+                        isActive ? handleCloseVendor() : handleOpenVendor(npc)
+                      }
+                    >
+                      {isActive ? "Mağazayı Kapat" : "Mağazayı Aç"}
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
         </section>
 
         <section className="region-panel region-panel--features">
@@ -859,6 +936,7 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
         <InventoryModal
           characterId={character.id}
           characterName={character.name}
+          characterLevel={character.level}
           onClose={handleCloseInventory}
           mode={inventoryMode}
           refreshToken={inventoryRefreshKey}
@@ -868,24 +946,51 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
             inventoryMode === "vendor" && activeVendor
               ? {
                   npcName: activeVendor.name,
-                  listings: activeVendor.shopListings.map((listing) => ({
-                    id: listing.id,
-                    price: listing.price,
-                    stock: listing.stock,
-                    item: {
-                      name: listing.item.name,
-                      type: listing.item.type,
-                      rarity: listing.item.rarity,
-                      icon: listing.item.icon,
-                      description: listing.item.description,
-                    },
-                  })),
+                  listings: activeVendor.shopListings
+                    .filter((listing) => {
+                      const requiredLevel =
+                        listing.item.levelRequirement ?? 1;
+                      return !character || requiredLevel <= character.level;
+                    })
+                    .map((listing) => ({
+                      id: listing.id,
+                      price: listing.price,
+                      stock: listing.stock,
+                      item: {
+                        id: listing.item.id,
+                        slug: listing.item.slug,
+                        name: listing.item.name,
+                        type: listing.item.type,
+                        rarity: listing.item.rarity,
+                        icon: listing.item.icon,
+                        description: listing.item.description,
+                        equipmentSlot: listing.item.equipmentSlot,
+                        handsRequired: listing.item.handsRequired,
+                        levelRequirement: listing.item.levelRequirement,
+                        degree: listing.item.degree,
+                        magicOptionLimit: listing.item.magicOptionLimit,
+                        upgradeLevel: listing.item.upgradeLevel,
+                        magicOptions: listing.item.magicOptions,
+                        stats: listing.item.stats,
+                      },
+                    })),
                   onRequestBuy: (listing) => handleRequestBuy(listing.id),
                 }
               : null
           }
         />
       )}
+
+      {skillsOpen && character ? (
+        <SkillModal
+          characterId={character.id}
+          characterName={character.name}
+          characterLevel={character.level}
+          skillPoints={character.skillPoints ?? 0}
+          onClose={handleCloseSkills}
+          onSkillPointsChange={handleSkillPointsChange}
+        />
+      ) : null}
     </div>
   );
 };

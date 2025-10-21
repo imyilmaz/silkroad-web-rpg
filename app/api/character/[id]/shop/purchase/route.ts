@@ -40,7 +40,7 @@ export async function POST(request: Request, { params }: RouteContext) {
 
   const character = await prisma.character.findFirst({
     where: { id: characterId, userId: user.id },
-    select: { id: true, gold: true },
+    select: { id: true, gold: true, level: true },
   });
 
   if (!character) {
@@ -78,6 +78,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     const result = await handleBuy(
       characterId,
       character.gold,
+      character.level,
       body.listingId,
       body.quantity ?? 1,
     );
@@ -87,66 +88,60 @@ export async function POST(request: Request, { params }: RouteContext) {
       characterGold: result.gold,
     });
   } catch (transactionError) {
-    if (
-      transactionError instanceof Error &&
-      transactionError.message === "INSUFFICIENT_GOLD"
-    ) {
-      return errorResponse("Bu işlem için yeterli altınınız yok.", 400);
-    }
+    if (transactionError instanceof Error) {
+      if (transactionError.message === "INSUFFICIENT_GOLD") {
+        return errorResponse("Bu islem icin yeterli altininiz yok.", 400);
+      }
 
-    if (
-      transactionError instanceof Error &&
-      transactionError.message === "INSUFFICIENT_STOCK"
-    ) {
-      return errorResponse("Yeterli stok bulunmuyor.", 400);
-    }
+      if (transactionError.message === "INSUFFICIENT_STOCK") {
+        return errorResponse("Yeterli stok kalmadi.", 400);
+      }
 
-    if (
-      transactionError instanceof Error &&
-      transactionError.message === "INVENTORY_FULL"
-    ) {
-      return errorResponse("Envanteriniz dolu.", 400);
-    }
+      if (transactionError.message === "INVENTORY_FULL") {
+        return errorResponse("Envanteriniz dolu.", 400);
+      }
 
-    if (
-      transactionError instanceof Error &&
-      transactionError.message === "STACK_LIMIT"
-    ) {
-      return errorResponse("Bu eşyadan en fazla 50 adet taşıyabilirsiniz.", 400);
-    }
+      if (transactionError.message === "STACK_LIMIT") {
+        return errorResponse("Bu esyadan en fazla 50 adet tasiyabilirsiniz.", 400);
+      }
 
-    if (
-      transactionError instanceof Error &&
-      transactionError.message === "STOCK_CHANGED"
-    ) {
-      return errorResponse(
-        "Stok durumu güncellendi, lütfen tekrar deneyin.",
-        409,
-      );
-    }
+      if (transactionError.message.startsWith("LEVEL_REQUIREMENT")) {
+        const [, levelText] = transactionError.message.split(":");
+        const requiredLevel = levelText ? Number(levelText) : null;
+        return errorResponse(
+          requiredLevel
+            ? "Bu esyayi satin almak icin seviye " + requiredLevel + " gerekiyor."
+            : "Bu esyayi satin almak icin seviyeniz yetersiz.",
+          400,
+        );
+      }
 
-    if (
-      transactionError instanceof Error &&
-      transactionError.message === "ITEM_NOT_FOUND"
-    ) {
-      return errorResponse("Bu eşya envanterinizde bulunamadı.", 404);
-    }
+      if (transactionError.message === "STOCK_CHANGED") {
+        return errorResponse("Stok durumu guncellendi, lutfen tekrar deneyin.", 409);
+      }
 
-    if (
-      transactionError instanceof Error &&
-      transactionError.message === "ITEM_EQUIPPED"
-    ) {
-      return errorResponse("Takılı olan bir eşyayı satamazsınız.", 400);
+      if (transactionError.message === "ITEM_NOT_FOUND") {
+        return errorResponse("Bu esya envanterinizde bulunamadi.", 404);
+      }
+
+      if (transactionError.message === "ITEM_EQUIPPED") {
+        return errorResponse("Takili olan bir esyayi satamazsiniz.", 400);
+      }
+
+      console.error("Shop action error:", transactionError);
+      return errorResponse("Magaza islemi sirasinda bir hata olustu.", 500);
     }
 
     console.error("Shop action error:", transactionError);
-    return errorResponse("Mağaza işlemi sırasında bir hata oluştu.", 500);
+    return errorResponse("Magaza islemi sirasinda bir hata olustu.", 500);
   }
+
 }
 
 async function handleBuy(
   characterId: number,
   currentGold: number,
+  characterLevel: number,
   listingId: number,
   requestedQuantity: number,
 ) {
@@ -157,6 +152,16 @@ async function handleBuy(
 
   if (!listing) {
     throw new Error("STOCK_CHANGED");
+  }
+
+  const requiredLevel =
+    listing.item.levelRequirement !== null &&
+    listing.item.levelRequirement !== undefined
+      ? listing.item.levelRequirement
+      : 1;
+
+  if (requiredLevel > characterLevel) {
+    throw new Error(`LEVEL_REQUIREMENT:${requiredLevel}`);
   }
 
   const isStackable = STACKABLE_TYPES.has(listing.item.type);

@@ -2,10 +2,44 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/auth";
 
+const DEFAULT_MASTERY_MULTIPLIER = 3;
+
+const resolveNumeric = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === "object" && value !== null) {
+    if ("multiplier" in value) {
+      const nested = (value as Record<string, unknown>).multiplier;
+      if (typeof nested === "number" && Number.isFinite(nested) && nested > 0) {
+        return nested;
+      }
+    }
+    if ("value" in value) {
+      const nested = (value as Record<string, unknown>).value;
+      if (typeof nested === "number" && Number.isFinite(nested) && nested > 0) {
+        return nested;
+      }
+    }
+  }
+  return null;
+};
+
+const getMasteryMultiplier = async (): Promise<number> => {
+  const setting = await prisma.gameSetting.findUnique({
+    where: { key: "skillMasteryMultiplier" },
+  });
+
+  const parsed = resolveNumeric(setting?.value);
+  return parsed ?? DEFAULT_MASTERY_MULTIPLIER;
+};
+
+type RouteParams = {
+  id: string;
+};
+
 type RouteContext = {
-  params: {
-    id: string;
-  };
+  params: RouteParams | Promise<RouteParams>;
 };
 
 type SkillResponse = {
@@ -37,7 +71,9 @@ type DisciplineResponse = {
 const errorResponse = (message: string, status = 400) =>
   NextResponse.json({ message }, { status });
 
-export async function GET(_request: Request, { params }: RouteContext) {
+export async function GET(_request: Request, context: RouteContext) {
+  const params = await Promise.resolve(context.params);
+
   const user = await getUserFromToken();
   if (!user) {
     return errorResponse("Yetkisiz erişim.", 401);
@@ -50,12 +86,24 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
   const character = await prisma.character.findFirst({
     where: { id: characterId, userId: user.id },
-    select: { id: true, gold: true },
+    select: { id: true, gold: true, level: true, skillPoints: true },
   });
 
   if (!character) {
-    return errorResponse("Karakter bulunamadı veya bu kullanıcıya ait değil.", 404);
+    return errorResponse(
+      "Karakter bulunamadı veya bu kullanıcıya ait değil.",
+      404,
+    );
   }
+
+  const masteryMultiplier = await getMasteryMultiplier();
+  const masteryLimit = character.level * masteryMultiplier;
+
+  const masterySumResult = await prisma.characterSkill.aggregate({
+    where: { characterId },
+    _sum: { rank: true },
+  });
+  const masteryTotal = masterySumResult._sum.rank ?? 0;
 
   const skills = await prisma.skill.findMany({
     orderBy: [{ disciplineId: "asc" }, { requiredLevel: "asc" }],
@@ -115,6 +163,13 @@ export async function GET(_request: Request, { params }: RouteContext) {
   return NextResponse.json({
     character: {
       gold: character.gold,
+      level: character.level,
+      skillPoints: character.skillPoints,
+      mastery: {
+        total: masteryTotal,
+        limit: masteryLimit,
+        multiplier: masteryMultiplier,
+      },
     },
     disciplines: Array.from(disciplines.values()),
   });
