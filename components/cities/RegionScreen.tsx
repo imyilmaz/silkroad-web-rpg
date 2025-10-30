@@ -6,6 +6,15 @@ import InventoryModal, {
   InventoryItemPayload,
 } from "@/components/inventory/InventoryModal";
 import SkillModal from "@/components/skills/SkillModal";
+import StatModal from "@/components/stats/StatModal";
+import GrindGuideModal from "@/components/guides/GrindGuideModal";
+import { buildStatSummary, type StatSummary } from "@/lib/game/statFormulas";
+import {
+  computePerSecondRates,
+  type GrindRoute,
+} from "@/lib/game/grindRoutes";
+import type { StatSnapshot } from "@/components/stats/statApi";
+import { useActiveCharacter } from "@/context/ActiveCharacterContext";
 
 type RegionBasics = {
   slug: string;
@@ -142,6 +151,10 @@ type ActiveCharacter =
         exp: number;
         gold: number;
         skillPoints: number;
+        statPoints: number;
+        strength: number;
+        intelligence: number;
+        summary: StatSummary;
       };
     }
   | {
@@ -162,8 +175,53 @@ type ConfirmState =
       saleUnitPrice: number;
     };
 
+const formatDuration = (milliseconds: number) => {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, "0")}:${seconds
+    .toString()
+    .padStart(2, "0")}`;
+};
+
+const formatProgressValue = (value: number) => {
+  if (!Number.isFinite(value)) return "0";
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)}M`;
+  }
+  if (value >= 1_000) {
+    return `${(value / 1_000).toFixed(1)}K`;
+  }
+  return Math.floor(value).toString();
+};
+
+
 type Props = {
   slug: string;
+};
+
+type GrindRates = {
+  expPerSecond: number;
+  spPerSecond: number;
+  goldPerSecond: number;
+  dropsPerSecond: number;
+};
+
+type GrindTotals = {
+  exp: number;
+  sp: number;
+  gold: number;
+  drops: number;
+};
+
+type GrindSession = {
+  routeId: string;
+  routeTitle: string;
+  startedAt: number;
+  elapsedMs: number;
+  rates: GrindRates;
+  totals: GrindTotals;
+  dropExamples: string[];
 };
 
 const regionTypeMap: Record<string, string> = {
@@ -191,6 +249,10 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
   );
   const [inventoryRefreshKey, setInventoryRefreshKey] = useState(0);
   const [skillsOpen, setSkillsOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
+  const [grindSession, setGrindSession] = useState<GrindSession | null>(null);
+  const { refresh: refreshActive } = useActiveCharacter();
 
   const [activeVendor, setActiveVendor] = useState<RegionNpc | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
@@ -254,11 +316,115 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
     };
   }, [slug]);
 
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => {
+    if (!grindSession) {
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      setGrindSession((prev) => {
+        if (!prev) {
+          return prev;
+        }
+
+        const elapsedMs = Date.now() - prev.startedAt;
+        const nextTotals = {
+          exp: prev.totals.exp + prev.rates.expPerSecond,
+          sp: prev.totals.sp + prev.rates.spPerSecond,
+          gold: prev.totals.gold + prev.rates.goldPerSecond,
+          drops: prev.totals.drops + prev.rates.dropsPerSecond,
+        };
+
+        const expGain =
+          Math.floor(nextTotals.exp) - Math.floor(prev.totals.exp);
+        const spGain = Math.floor(nextTotals.sp) - Math.floor(prev.totals.sp);
+
+        if (expGain > 0 || spGain > 0) {
+          setCharacterData((existing) => {
+            if (!existing || !("character" in existing)) {
+              return existing;
+            }
+
+            const current = { ...existing.character };
+
+            if (expGain > 0) {
+              const currentExp = current.exp ?? 0;
+              current.exp = currentExp + expGain;
+
+              if (
+                typeof current.level === "number" &&
+                typeof current.strength === "number" &&
+                typeof current.intelligence === "number"
+              ) {
+                current.summary = buildStatSummary(
+                  {
+                    level: current.level,
+                    strength: current.strength,
+                    intelligence: current.intelligence,
+                  },
+                  current.exp,
+                );
+              }
+            }
+
+            if (spGain > 0) {
+              const currentSp = current.skillPoints ?? 0;
+              current.skillPoints = currentSp + spGain;
+            }
+
+            return {
+              ...existing,
+              character: current,
+            };
+          });
+        }
+
+        return {
+          ...prev,
+          elapsedMs,
+          totals: nextTotals,
+        };
+      });
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [grindSession?.routeId, grindSession?.startedAt]);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
   const region = regionData?.region ?? null;
   const character =
     characterData && "character" in characterData
       ? characterData.character
       : null;
+
+  const characterSummary = character?.summary ?? null;
+  const hpCurrent = characterSummary?.vitals.hp.current ?? null;
+  const hpMax = characterSummary?.vitals.hp.max ?? null;
+  const mpCurrent = characterSummary?.vitals.mp.current ?? null;
+  const mpMax = characterSummary?.vitals.mp.max ?? null;
+  const hpPercent =
+    hpCurrent !== null && hpMax
+      ? Math.max(0, Math.min(100, (hpCurrent / Math.max(hpMax, 1)) * 100))
+      : 100;
+  const mpPercent =
+    mpCurrent !== null && mpMax
+      ? Math.max(0, Math.min(100, (mpCurrent / Math.max(mpMax, 1)) * 100))
+      : 100;
+  const hpTooltip =
+    hpCurrent !== null && hpMax !== null
+      ? `${hpCurrent.toLocaleString("tr-TR")} / ${hpMax.toLocaleString("tr-TR")}`
+      : undefined;
+  const mpTooltip =
+    mpCurrent !== null && mpMax !== null
+      ? `${mpCurrent.toLocaleString("tr-TR")} / ${mpMax.toLocaleString("tr-TR")}`
+      : undefined;
+  const expPercent = characterSummary
+    ? Math.max(0, Math.min(100, Math.round(characterSummary.exp.percent)))
+    : 0;
+  const expTooltip = characterSummary
+    ? `${characterSummary.exp.current.toLocaleString("tr-TR")} / ${characterSummary.exp.required.toLocaleString("tr-TR")}`
+    : undefined;
 
   const friendlyRegionType = region
     ? regionTypeMap[region.type] ?? region.type
@@ -275,10 +441,111 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
     return [...regionData.travel.from, ...regionData.travel.to];
   }, [regionData]);
 
-  const showNotification = (message: string) => {
+  const showNotification = useCallback((message: string) => {
     setNotification(message);
     window.setTimeout(() => setNotification(null), 3000);
-  };
+  }, []);
+
+  const handleStartGrind = useCallback(
+    (route: GrindRoute) => {
+      if (!character) {
+        showNotification("Aktif karakter bulunamadi.");
+        return;
+      }
+
+      if (grindSession) {
+        showNotification("Once mevcut kasilmayi durdurmalisiniz.");
+        return;
+      }
+
+      if (character.level < route.levelRange.min) {
+        showNotification(
+          `Bu rota icin minimum seviye ${route.levelRange.min}.`,
+        );
+        return;
+      }
+
+      const rateSnapshot = computePerSecondRates(route, character.level);
+
+      setGrindSession({
+        routeId: route.id,
+        routeTitle: route.title,
+        startedAt: Date.now(),
+        elapsedMs: 0,
+        rates: {
+          expPerSecond: rateSnapshot.xpPerSecond,
+          spPerSecond: rateSnapshot.spPerSecond,
+          goldPerSecond: rateSnapshot.goldPerSecond,
+          dropsPerSecond: rateSnapshot.dropsPerSecond,
+        },
+        totals: { exp: 0, sp: 0, gold: 0, drops: 0 },
+        dropExamples: route.primarySpot.drops ?? [],
+      });
+
+      showNotification(`${route.title} rotasinda kasilma basladi.`);
+    },
+    [character, grindSession, showNotification],
+  );
+
+  const handleStopGrind = useCallback(async () => {
+    if (!grindSession || !character) {
+      return;
+    }
+
+    const durationMs = Date.now() - grindSession.startedAt;
+
+    try {
+      const response = await fetch(
+        `/api/character/${character.id}/grind/complete`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            routeId: grindSession.routeId,
+            durationMs,
+          }),
+        },
+      );
+
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        showNotification(
+          payload?.message ?? "Kasilma odulleri uygulanamadi.",
+        );
+        return;
+      }
+
+      setCharacterData((prev) => {
+        if (prev && "character" in prev) {
+          return {
+            ...prev,
+            character: {
+              ...prev.character,
+              level: payload.character.level,
+              exp: payload.character.exp,
+              statPoints: payload.character.statPoints,
+              skillPoints: payload.character.skillPoints,
+              gold: payload.character.gold,
+              summary: payload.character.summary,
+            },
+          };
+        }
+        return prev;
+      });
+
+      showNotification(
+        `Kasilma tamamlandi: +${payload.rewards.exp} EXP, +${payload.rewards.sp} SP.`,
+      );
+
+      void refreshActive();
+    } catch (error) {
+      console.error("Grind completion failed:", error);
+      showNotification("Kasilma odulleri uygulanirken hata olustu.");
+    } finally {
+      setGrindSession(null);
+    }
+  }, [grindSession, character, showNotification, refreshActive]);
 
   const resetVendorState = () => {
     setActiveVendor(null);
@@ -300,6 +567,22 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
 
   const handleCloseSkills = () => {
     setSkillsOpen(false);
+  };
+
+  const handleOpenStats = () => {
+    setStatsOpen(true);
+  };
+
+  const handleCloseStats = () => {
+    setStatsOpen(false);
+  };
+
+  const handleOpenGuide = () => {
+    setGuideOpen(true);
+  };
+
+  const handleCloseGuide = () => {
+    setGuideOpen(false);
   };
 
   const handleCloseInventory = () => {
@@ -337,6 +620,24 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
         return {
           ...prev,
           character: { ...prev.character, skillPoints: nextSkillPoints },
+        };
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleStatSnapshot = useCallback((snapshot: StatSnapshot) => {
+    setCharacterData((prev) => {
+      if (prev && "character" in prev) {
+        return {
+          ...prev,
+          character: {
+            ...prev.character,
+            statPoints: snapshot.statPoints,
+            strength: snapshot.strength,
+            intelligence: snapshot.intelligence,
+            summary: snapshot.summary,
+          },
         };
       }
       return prev;
@@ -747,18 +1048,59 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
           <h1>{character.name}</h1>
           <div className="region-hud__bars">
             <div className="region-hud__bar region-hud__bar--hp">
-              <span>HP</span>
-              <div className="region-hud__bar-fill" style={{ width: "100%" }} />
+              <span title={hpTooltip ?? undefined}>HP</span>
+              <div
+                className="region-hud__bar-fill"
+                style={{ width: `${hpPercent}%` }}
+                aria-label={hpTooltip ?? undefined}
+              />
             </div>
             <div className="region-hud__bar region-hud__bar--mp">
-              <span>MP</span>
-              <div className="region-hud__bar-fill" style={{ width: "100%" }} />
+              <span title={mpTooltip ?? undefined}>MP</span>
+              <div
+                className="region-hud__bar-fill"
+                style={{ width: `${mpPercent}%` }}
+                aria-label={mpTooltip ?? undefined}
+              />
             </div>
-          </div>
           <div className="region-hud__stats">
             <span>Seviye {character.level}</span>
-            <span>Altın {character.gold}</span>
-            <span>Yetenek Puanı {character.skillPoints ?? 0}</span>
+            <span>Altin {character.gold}</span>
+            <span>Yetenek Puani {character.skillPoints ?? 0}</span>
+            <span>Stat Puani {character.statPoints ?? 0}</span>
+          </div>
+          <div className="region-hud__grind">
+            <div className="region-hud__grind-header">
+              <span>Kasilma Rotasi</span>
+              <strong>{grindSession ? grindSession.routeTitle : "Pasif"}</strong>
+            </div>
+            {grindSession ? (
+              <ul className="region-hud__grind-stats">
+                <li>
+                  Sure <strong>{formatDuration(grindSession.elapsedMs)}</strong>
+                </li>
+                <li title={Math.floor(grindSession.totals.exp).toLocaleString("tr-TR")}>
+                  EXP <strong>{formatProgressValue(grindSession.totals.exp)}</strong>
+                </li>
+                <li title={Math.floor(grindSession.totals.sp).toLocaleString("tr-TR")}>
+                  SP <strong>{formatProgressValue(grindSession.totals.sp)}</strong>
+                </li>
+                <li title={Math.floor(grindSession.totals.gold).toLocaleString("tr-TR")}>
+                  Altin <strong>{formatProgressValue(grindSession.totals.gold)}</strong>
+                </li>
+                <li title={Math.floor(grindSession.totals.drops).toLocaleString("tr-TR")}>
+                  Drop <strong>{formatProgressValue(grindSession.totals.drops)}</strong>
+                  {grindSession.dropExamples.length ? (
+                    <span className="region-hud__grind-drops">
+                      {grindSession.dropExamples.slice(0, 2).join(", ")}
+                    </span>
+                  ) : null}
+                </li>
+              </ul>
+            ) : (
+              <p className="region-hud__grind-empty">Kasilma aktif degil.</p>
+            )}
+          </div>
           </div>
         </div>
 
@@ -787,6 +1129,20 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
             onClick={handleOpenSkills}
           >
             Yetenekler
+          </button>
+          <button
+            type="button"
+            className="region-button"
+            onClick={handleOpenStats}
+          >
+            Statlar
+          </button>
+          <button
+            type="button"
+            className="region-button"
+            onClick={handleOpenGuide}
+          >
+            Kasilma Rehberi
           </button>
           {activeVendor ? (
             <button
@@ -907,11 +1263,14 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
 
       <footer className="region-footer">
         <div className="region-footer__exp">
-          <span>EXP {character.exp.toLocaleString()}</span>
+          <span title={expTooltip ?? undefined}>
+            EXP {character.exp.toLocaleString()}
+          </span>
           <div className="region-footer__exp-bar">
             <div
               className="region-footer__exp-fill"
-              style={{ width: "35%" }}
+              style={{ width: `${expPercent}%` }}
+              aria-label={expTooltip ?? undefined}
             />
           </div>
         </div>
@@ -981,6 +1340,25 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
         />
       )}
 
+      {guideOpen ? (
+        <GrindGuideModal
+          onClose={handleCloseGuide}
+          engagedRouteId={grindSession?.routeId}
+          onStartRoute={handleStartGrind}
+          onStopRoute={handleStopGrind}
+        />
+      ) : null}
+
+      {statsOpen && character ? (
+        <StatModal
+          characterId={character.id}
+          characterName={character.name}
+          characterLevel={character.level}
+          onClose={handleCloseStats}
+          onStatsUpdated={handleStatSnapshot}
+        />
+      ) : null}
+
       {skillsOpen && character ? (
         <SkillModal
           characterId={character.id}
@@ -996,3 +1374,4 @@ const RegionScreen: React.FC<Props> = ({ slug }) => {
 };
 
 export default RegionScreen;
+

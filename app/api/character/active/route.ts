@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getUserFromToken } from '@/lib/auth'
 import prisma from '@/lib/prisma'
+import { buildStatSummary } from '@/lib/game/statFormulas'
 
 export async function GET() {
   const user = await getUserFromToken()
@@ -22,6 +23,15 @@ export async function GET() {
     return NextResponse.json({ hasCharacter: true, selected: false })
   }
 
+  const summary = buildStatSummary(
+    {
+      level: session.character.level,
+      strength: session.character.strength,
+      intelligence: session.character.intelligence,
+    },
+    session.character.exp,
+  )
+
   return NextResponse.json({
     hasCharacter: true,
     selected: true,
@@ -33,6 +43,10 @@ export async function GET() {
       exp: session.character.exp,
       gold: session.character.gold,
       skillPoints: session.character.skillPoints,
+      statPoints: session.character.statPoints,
+      strength: session.character.strength,
+      intelligence: session.character.intelligence,
+      summary,
     },
   })
 }

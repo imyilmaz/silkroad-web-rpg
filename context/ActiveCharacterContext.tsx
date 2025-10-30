@@ -8,14 +8,20 @@ import {
   useMemo,
   useState,
 } from "react";
+import type { StatSummary } from "@/lib/game/statFormulas";
 
 type ActiveCharacter = {
   id: number;
   name: string;
   gold: number | null;
   skillPoints: number | null;
+  statPoints: number | null;
+  strength: number | null;
+  intelligence: number | null;
+  summary?: StatSummary;
   level?: number;
   race?: string;
+  exp?: number;
 };
 
 type ActiveCharacterContextValue = {
@@ -24,6 +30,12 @@ type ActiveCharacterContextValue = {
   refresh: () => Promise<void>;
   updateGold: (gold: number) => void;
   updateSkillPoints: (skillPoints: number) => void;
+  updateStats: (
+    stats: Pick<
+      ActiveCharacter,
+      "statPoints" | "strength" | "intelligence" | "summary"
+    >,
+  ) => void;
 };
 
 const ActiveCharacterContext = createContext<
@@ -53,8 +65,13 @@ export const ActiveCharacterProvider = ({
           name: payload.character.name,
           level: payload.character.level,
           race: payload.character.race,
+          exp: payload.character.exp,
           gold: payload.character.gold ?? null,
           skillPoints: payload.character.skillPoints ?? null,
+          statPoints: payload.character.statPoints ?? null,
+          strength: payload.character.strength ?? null,
+          intelligence: payload.character.intelligence ?? null,
+          summary: payload.character.summary,
         });
       } else {
         setCharacter(null);
@@ -79,6 +96,17 @@ export const ActiveCharacterProvider = ({
     setCharacter((prev) => (prev ? { ...prev, skillPoints } : prev));
   }, []);
 
+  const updateStats = useCallback(
+    (
+      stats: Pick<
+        ActiveCharacter,
+        "statPoints" | "strength" | "intelligence" | "summary"
+      >,
+    ) => {
+      setCharacter((prev) => (prev ? { ...prev, ...stats } : prev));
+    },
+  []);
+
   const value = useMemo<ActiveCharacterContextValue>(
     () => ({
       character,
@@ -86,8 +114,9 @@ export const ActiveCharacterProvider = ({
       refresh: fetchSession,
       updateGold,
       updateSkillPoints,
+      updateStats,
     }),
-    [character, loading, fetchSession, updateGold, updateSkillPoints],
+    [character, loading, fetchSession, updateGold, updateSkillPoints, updateStats],
   );
 
   return (

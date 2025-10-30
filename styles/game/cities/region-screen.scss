@@ -80,6 +80,72 @@
     color: rgba(244, 242, 255, 0.85);
 }
 
+.region-hud__grind {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(32, 28, 48, 0.75);
+    border: 1px solid rgba(156, 126, 230, 0.28);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 0.82rem;
+    color: rgba(244, 240, 255, 0.8);
+}
+
+.region-hud__grind-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+
+    span {
+        font-weight: 600;
+        color: rgba(244, 240, 255, 0.7);
+    }
+
+    strong {
+        font-size: 0.88rem;
+        color: #ffd76f;
+    }
+}
+
+.region-hud__grind-stats {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 6px 12px;
+
+    li {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        strong {
+            color: #fce6a8;
+        }
+    }
+}
+
+.region-hud__grind-drops {
+    margin-left: 4px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(255, 215, 111, 0.22);
+    color: #ffd76f;
+    font-size: 0.75rem;
+}
+
+.region-hud__grind-empty {
+    margin: 0;
+    font-size: 0.8rem;
+    color: rgba(244, 240, 255, 0.6);
+}
+
 .region-hud__map {
     display: flex;
     align-items: center;

@@ -1,82 +1,161 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import StatSheet from "@/components/stats/StatSheet";
+import {
+  fetchStats,
+  allocateStat,
+  type StatResponse,
+  type AllocateTarget,
+  type StatSnapshot,
+} from "@/components/stats/statApi";
+import { useActiveCharacter } from "@/context/ActiveCharacterContext";
 
-export default function StatPanel() {
-    const [str, setStr] = useState(20)
-    const [int, setInt] = useState(20)
-    const [available, setAvailable] = useState(333)
-    const baseSTR = 20
-    const baseINT = 20
-    const phyBalance = Math.round(50 + (str - baseSTR) * 1.5)
-    const magBalance = Math.round(50 + (int - baseINT) * 1.5)
+type StatPanelProps = {
+  characterId?: number;
+};
 
+export default function StatPanel({ characterId }: StatPanelProps) {
+  const { character: activeCharacter, updateStats } = useActiveCharacter();
+  const resolvedId = characterId ?? activeCharacter?.id ?? null;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [statData, setStatData] = useState<StatResponse["character"] | null>(
+    null,
+  );
+  const [allocating, setAllocating] = useState<AllocateTarget | null>(null);
 
-    const increaseStr = () => {
-        if (available > 0) {
-            setStr(prev => prev + 1)
-            setAvailable(prev => prev - 1)
+  const isActiveCharacter =
+    activeCharacter && resolvedId !== null && resolvedId === activeCharacter.id;
+
+  const syncSnapshot = useCallback(
+    (payload: StatResponse["character"]) => {
+      setStatData(payload);
+      const snapshot: StatSnapshot = {
+        statPoints: payload.statPoints,
+        strength: payload.strength,
+        intelligence: payload.intelligence,
+        summary: payload.summary,
+      };
+
+      if (isActiveCharacter) {
+        updateStats(snapshot);
+      }
+    },
+    [isActiveCharacter, updateStats],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      if (!resolvedId) {
+        setLoading(false);
+        setError("Aktif karakter bulunamadı.");
+        return;
+      }
+
+      try {
+        setLoading(true);
+        const payload = await fetchStats(resolvedId);
+        if (!cancelled) {
+          syncSnapshot(payload.character);
+          setError(null);
         }
-    }
-
-    const increaseInt = () => {
-        if (available > 0) {
-            setInt(prev => prev + 1)
-            setAvailable(prev => prev - 1)
+      } catch (reason) {
+        if (!cancelled) {
+          console.error("Stat panel load failed:", reason);
+          setError(
+            reason instanceof Error
+              ? reason.message
+              : "Stat bilgileri alınamadı.",
+          );
         }
-    }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
 
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedId, syncSnapshot]);
+
+  const handleAllocate = useCallback(
+    async (target: AllocateTarget) => {
+      if (!resolvedId || !statData || statData.statPoints <= 0) {
+        return;
+      }
+
+      try {
+        setAllocating(target);
+        const payload = await allocateStat(resolvedId, target);
+        syncSnapshot(payload.character);
+        toast.success(
+          target === "strength"
+            ? "STR 1 puan arttırıldı."
+            : "INT 1 puan arttırıldı.",
+        );
+      } catch (reason) {
+        console.error("Stat allocation error:", reason);
+        toast.error(
+          reason instanceof Error
+            ? reason.message
+            : "Stat dağıtımı sırasında hata oluştu.",
+        );
+      } finally {
+        setAllocating(null);
+      }
+    },
+    [resolvedId, statData, syncSnapshot],
+  );
+
+  if (!resolvedId) {
     return (
-        <div className="stat-panel">
-            <div className="stat-header">
-                <span>Stat Point:</span> <strong>{available}</strong>
-            </div>
-            <div className="stat-attributes">
-                <div className="stat-row">
-                    <span>STR</span>
-                    <strong>{str}</strong>
-                    <button onClick={increaseStr} disabled={available <= 0}>+</button>
-                </div>
-                <div className="stat-row">
-                    <span>INT</span>
-                    <strong>{int}</strong>
-                    <button onClick={increaseInt} disabled={available <= 0}>+</button>
-                </div>
-            </div>
+      <div className="stat-panel">
+        <p>Aktif karakter bulunamadı.</p>
+      </div>
+    );
+  }
 
-            <div className="stat-box">
-                <div className="row">
-                    <span>HP:</span> <span>{str * 100}</span>
-                    <span>MP:</span> <span>{int * 120}</span>
-                </div>
-                <div className="row">
-                    <span>Phy. atk:</span> <span>{str * 5} ~ {str * 7}</span>
-                    <span>Mag. atk:</span> <span>{int * 10} ~ {int * 12}</span>
-                </div>
-                <div className="row">
-                    <span>Phy. def:</span> <span>{str * 2}</span>
-                    <span>Mag. def:</span> <span>{int * 2}</span>
-                </div>
-                <div className="row">
-                    <span>Phy. bal.</span><span>{phyBalance}%</span>
-                    <span>Mag. bal.</span><span>{magBalance}%</span>
-                </div>
-                <div className="row">
-                    <span>Hit ratio:</span> <span>{str * 2}</span>
-                    <span>Parry ratio:</span> <span>{int * 2}</span>
-                </div>
-            </div>
+  if (loading) {
+    return (
+      <div className="stat-panel">
+        <p>Stat bilgileri yükleniyor...</p>
+      </div>
+    );
+  }
 
-            <div className="job-box">
-                <div>Job alias: &lt;Nothing&gt;</div>
-                <div>Job level: &lt;Nothing&gt;</div>
-                <div className="job-exp">
-                    <div className="bar">
-                        <div className="fill" style={{ width: '0%' }}></div>
-                    </div>
-                    <div>0%</div>
-                </div>
-            </div>
-        </div>
-    )
+  if (error) {
+    return (
+      <div className="stat-panel">
+        <p className="error">{error}</p>
+      </div>
+    );
+  }
+
+  if (!statData) {
+    return null;
+  }
+
+  return (
+    <div className="stat-panel stat-panel--sheet">
+      <StatSheet
+        name={statData.name}
+        level={statData.level}
+        statPoints={statData.statPoints}
+        strength={statData.strength}
+        intelligence={statData.intelligence}
+        summary={statData.summary}
+        honorPoints={statData.honorPoints}
+        onAllocate={handleAllocate}
+        allocating={allocating}
+      />
+    </div>
+  );
 }

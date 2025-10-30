@@ -35,6 +35,9 @@ model Character {
   exp       Int              @default(0)
   gold      Int              @default(0)
   skillPoints Int            @default(0)
+  statPoints Int             @default(0)
+  strength  Int              @default(20)
+  intelligence Int           @default(20)
   createdAt DateTime         @default(now())
 
   sessions  Session[]
